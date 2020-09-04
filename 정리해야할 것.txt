@@ -1,0 +1,146 @@
+mysql
+문법정리
+ALTER
+외래키 추가/제거
+컬럼 추가/제거
+DEFAULT값 설정
+필드이름 변경 
+등등
+update관련 안전모드(safemode)제거
+https://m.blog.naver.com/PostView.nhn?blogId=bb_&logNo=221230952432&proxyReferer=https:%2F%2Fwww.google.com%2F
+외래키추가/제거 
+https://allg.tistory.com/37
+on delete cascade
+https://stackoverflow.com/questions/1571581/how-to-add-on-delete-cascade-in-alter-table-statement
+===================================
+
+ec2보안규칙
+-인바운드와 아웃바운드란?
+
+#멀티태스킹, 멀티프로세싱, 멀티프로그래밍 etc..
+#어노테이션에 관하여.
+
+CORS에 대한 이해
+-@CrossOrigin
+
+
+도커
+- 도커 개념
+- mysql등록
+
+mybatis
+- mybatis-spring연동
+- <if><choose><when>등등
+- if-else대체
+- jdbcType
++mybatis-spring  error.
+https://meaownworld.tistory.com/122
+
+
+
+
+Gson / Json
+-Gson이란?
+https://galid1.tistory.com/501
+-@SerializedName
+https://cherrypick.co.kr/gson-serializedname-annotation/
+-JSON이 다운되버릴 때
+https://hellogk.tistory.com/115
+-Gson에서 array받을때 Type사용 이유와 해결법
+
+JAVA / youtube api
+- Java라이브러리 사용하고 싶었습니다만... Deprecated...
+https://googleapis.dev/java/google-api-client/latest/index.html
+...
+https://hojak99.tistory.com/373
+https://x1fingers.me/wordpress/spring-boot-youtube-api-%EC%84%A4%EC%A0%95/
+
+- HttpConnection을 통한 get/post
+https://javacan.tistory.com/entry/35
+https://nowonbun.tistory.com/479
+-OAuth
+https://medium.com/@sophiechoi_8138/oauth2-c3865d9e105
+생코완벽.
+-GoogleApiConsole ~ 적용까지.
+-playlistitems시에 apikey추가부분. 사용량초과라고 나오는데 관련한 해답
+https://stackoverflow.com/questions/43096450/youtube-data-api-return-dailylimitexceededunreg-reach
+-주의. redirect_url은 등록한 그 url을 입력해야댐...시발...
+https://answers.ifunfactory.com/question/716/gugeul-gyeolje-geomjeung-gwanryeon-jilmundeuribnida/
+-비디오 시간 알아내는 법.
+https://stackoverrun.com/ko/q/4232791
+part = contentDetails
+Spring
+-외부 호스트 URL로 리다이렉트하고싶을 때
+https://yoo-hyeok.tistory.com/61
+-ModelAndView addObject 로 넣고 JSP에서는 EL로 사용하는데, 이때의 동작방식. session.SetAttribute가 아니더라.
+(모델의 멤버변수에도 .으로 접근)
+-EL정리. 
+-EL이 인식 안될 때. 태그작성법 등.
+http://egloos.zum.com/ultteky/v/3945843
+-classpath설정에 관하여
+https://developer-joe.tistory.com/225
+-이건 그냥 mybatis관련 다 참고했던 사이트들
+https://velog.io/@wimes/2.-%EA%B0%9C%EB%B0%9C%ED%99%98%EA%B2%BD%EC%84%A4%EC%A0%95-Spring-MyBatis-MySQL%EC%9D%98-%EC%84%A4%EC%A0%95-2zk4cf5gof
+https://www.hanumoka.net/categories/spring/page/3/
+-redirect시 post로 데이터 넘기기
+https://okky.kr/article/501050
+위방법은 빈 페이지 거치는 방법.
+아니라면 HttpConnection사용.
+-ResponseBody
+https://ismydream.tistory.com/140
+
+git
+git config설정 확인 및 변경
+https://webisfree.com/2018-07-26/git-config-%EC%84%A4%EC%A0%95-%ED%99%95%EC%9D%B8-%EB%B0%8F-%EB%B3%80%EA%B2%BD%ED%95%98%EA%B8%B0
+-Command객체 + ModelAttribute어노테이션을 통한 커맨드객체이름변경
+https://rwd337.tistory.com/53
+
+JAVA
+-클래스,객체,인스턴스
+https://gmlwjd9405.github.io/2018/09/17/class-object-instance.html
+-메모리,스택,힙
+-다형성
+-타입파라미터의 사용
+ 
+=====================
+공부해볼꺼
+-SMTP서버를 이용한 스프링 메일 발송
+-JavaScript this.
+https://itnext.io/the-this-keyword-in-javascript-demystified-c389c92de26d
+-RestTemplate
+https://javaiyagi.tistory.com/457
+-스프링 시큐리티
+https://www.youtube.com/watch?v=zANzxwy4y3k
+-css
+-transform
+https://developer.mozilla.org/en-US/docs/Web/CSS/transform
+-flexbox
+https://heropy.blog/2018/11/24/css-flexible-box/
+-css-game1
+http://flexboxfroggy.com/#ko
+
+===============
+
+정규표현식
+
+수평/수직 파티션
+수평/수직 분할
+
+파티션과 분산데이터베이스
+
+서브넷팅
+Data전송.
+HttpConnection계층과 HttpServlet관련한 정리.
+
+서버의 Post전송방법 2가지.
+
+
+
+jwt -- googleDocs
+
+Spring Security
+JPA
+Filter
+
+
+Session. CORS. OAUTH. JWT 순서로 정리.

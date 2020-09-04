@@ -1,0 +1,1158 @@
+Mybatis
+
+다양한 매핑방법과 확장 방법을 제공함.
+MyBatis구현원리
+XML설정
+자바설정
+CRUD처리를 위해 API
+--기초
+타입핸들러
+오브젝트 팩토리
+플러그인
+--고급
+
+아이바티스 시절부터 생각하면 나온지 오래된 프레임워크.
+너무나 당연하게 사용되왔지만, 원리를 이해하는것은 필요함.
+활용이 아닌 이해를 중점으로 하는 책 	// 활용은 따로 해봐야 된다는 느낌
+
+
+MyBatis == SQL 매퍼 프레임워크
+SQL매퍼 프레임워크란? 그리고 마이바티스의 역할은 어디까지인지?
+
+조건.
+1. 자바에 대한 기본적인 지식
+2. JDBC프로그래밍 경험을 갖추었고
+3. 마이바티스를 처음 사용한다는 전제.
+--> 기존의 JDBC를 사용한 DB연동을 MyBatis연동으로 바꾸어 볼까 생각중임.
+
+MyBatis 개념.
+JDBC이야기를하면
+데이터베이스 프로그래밍은 요청을 통해 데이터베이스에 접근하여 DB를 조회/변경 하는 등의 작업을 수행하는 것을 칭함.
+JDBC인터페이스를 통해 JDBC 프로그래밍을 하면 이 인터페이스를 통해 요청과 응답을 받음.
+1. JDBC드라이버 로드(Class.forName // 동적로딩)
+2. DB연결
+3. 쿼리문 객체 생성 (Connection / (Prepared)Statement)
+4. 쿼리문 실행 및 결과 반환(ResultSet)
+5. 결과 처리
+6. 자원 및 DB 연결 해제
+
+다수의 DB연결작업이 이루어지는, 다수의 JDBC프로그래밍 시에는 JDBC인터페이스를 사용하는 소스 코드가 여러 곳에 존재할 수 있음.
+--> 유지보수의 문제. 수정이 필요할경우 일일히 찾아서 수정해야함.
+
+하나의 DAO클래스를 이용하여, JDBC인터페이스 호출하는 소스 코드를 하나의 클래스에 정의하고, 이를 다른 어플리케이션에서 사용하면 반복으로 인한 문제는 어느정도 해결이 가능함.
+DAO클래스에서는
+1) 외부 파일에 DB설정 및 쿼리문 정의
+2) JDBC드라이버 로딩, 데잍베이서 연결 및 해제 처리
+3) 전달받은 인자 쿼리문 바인딩 및 반환결과 처리
+와 같은 작업을 처리해 주어야 함.
+
+DAO클래스를 사용하더라도 호출 순서에 대해서는 변하지 않음.
+Mapper인터페이스 사용을 통해 인터페이스 호출 순서에 대한 번거로움 해결이 가능함.
+//Interface
+Public interface Mapper{
+    public Object selectOne(쿼리문 아이디, 파라미터객체, 리절트 객체 타입);
+}
+//Implement Class
+public class SqlMapper implements Mapper{
+    public Object selecOne(쿼리문아이디, 파라미터 객체, 리절트 객체 타입){
+        //JDBC 인터페이스 호출 순서에 맞게 작성
+    }
+}
+//Java Application
+Mapper mapper = new SqlMapper();
+mapper.selectOne("select", parameters, "org.mybtis.domain.Shop");
+
+#퍼시스턴스 계층
+위의 인터페이스, 프레임워크, JDBC인터페이스와 같이 DB와 정보를 주고받는데 사용되는 것들.
+시스템에서 처리한 결과를 저장하거나 조회하거나 함.
+퍼시스턴스 계층의 인터페이스를 퍼시스턴스 인터페이스, 프레임워크를 퍼시스턴스 프레임워크라함.
+퍼시스턴스 계층은 자바 어플리케이션에 DB데이터모델을 자연스럽게 연결할 수 있어야 함.
+하지만 클래스의 프로퍼티와 데이터모델의 컬럼명이 불일치하거나 개수가 다를경우에 어떻게 매핑할지에 대한 방안도 필요함.
+
+이때, Mapper를 정의하여 사용함. 크게 두가지 방법이 있으며
+1) 객체 관계를 적용한 OR(Object Releational) 매핑
+2) 쿼리문을 사용한 SQL매핑 방식이 있음.
+SQL의 Select구문에서 Select '컬럼명' as '별칭명'을 이용한 방식을 통해서
+자바 어플리케이션 객체에서 프로퍼티명을 별칭명으로써 사용하여 SQL상 매핑을 이루는 방식임.
+이때, SQL매핑 방식을 통한 Mapper를 SQLMapper라고 함.
+MyBatis의 경우에는 SQL매핑 방식을 지원하며, 참고사항으로 OR매핑의 대표는 hibernate임.
+
+#MyBatis사용을 위한 사전준비.
+프로젝트의 하위에 
+/src/org/mybatis/domain 	디렉토리를 생성, 도메인 클래스를 위치시킴.
+/src/resources/jdbc		디렉토리를 통해 DB설정 프로퍼티 파일과 쿼리문 프로퍼티 파일위치.
+
+domain 디렉토리에 매핑을 수행할 자바 클래스를 작성.
+ex)
+public class Shop{
+    int shopNo;
+    String shopName;
+    String shopLocation;
+    String shopStatus;
+}
+이때, 자료형은 컬럼의 타입에 맞추어 져야함.
+이후, 도메인은 기본생성자와 모든 프로퍼티를 인자로 갖는 생성자를 생성.
+아직 이유는 모르겠지만 Serializable인터페이스를 구현하는 클래스로 작성함.
+
+이후 Application객체를 생성하며, 이 클래스는 JDBC인터페이스에 따라서 DB를 조회/변경함.
+이때, ResultSet으로는 위의 도메인객체를 사용함.
+view()메소드를 지정하며, JDBC의 인터페이서 순서를 따름.
+여기서 드라이버 클래스를 동적로딩시켜주고,
+DriverManager클래스의 getConnection()메소드를 통해 Connection객체를 반환받음.
+getConnection시에 파라미터로 DB연결 URL, 계정, 비밀번호를 인자로 지정함.
+이후 ResultSet을 미리 선언해놓은 도메인객체로 결과를 처리함.
+JDBC인터페이스 사용이 끝났다면 사용한 자원을 반환해야함.
+이때, 필수는 아닌걸로 알고있긴 하지만
+순서에 유의하면서 닫아주는거로.
+Resultset을 닫고, 이후에 PreparedStatement를 닫고, 마지막으로 Connection을 close.
+
+public class Application{
+    public void view(List<Object> parameters) throws SQLException{
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        Shop shop = null;
+        try{
+            // JDBC드라이버 로딩
+            Class.forName("oracle.jdbc.driver.OracleDriver");
+            // DB연결
+            connection = DriverManager.getConnection(
+                "jdbc:oracle:this:@localhost:1521:xe", "mybatis", "mybatis$");
+            PreparedStatement = connection.prepareStatement(
+                SQL쿼리문.
+            );
+            //파라미터 바인딩
+            preparedStatement.setInt(1, (Integer)parameters.get(0));
+            preparedStatement.setString(2, (String.valueOf(parameters.get(1));
+            // 쿼리문 실행 및 결과 반환
+            resultSet = preparedStatement.executeQuery();
+            // 결과 처리	---> resultSet의 결과를 미리 선언해놓은 도메인 객체에 담음.
+            if(resultSet.next()){
+                shop = new Shop();
+                shop.setShopNo(resultSEt.getInt("SHOP_NO"));
+                ...
+            }
+            }catch(ClassNotFoundException e){
+                throw new RuntimeException(e);
+            }catch(SQLException e){
+                throw e;
+            }finally{
+                if(resultSet != null){
+                    try{
+                        resultSet.close();
+                    }catch (SQLException e){
+                    }
+                }
+                if(preparedStatement != null){
+                    try{
+                        preparedStatement.close();
+                    }catch (SQLException e){
+                    }
+                }
+                if(connection != null){
+                    try{
+                        connection.close();
+                    }catch (SQLException e){
+                    }
+                }
+    }
+}
+
+Executor클래스는 main()에서 Application객체를 생성하여 view()메서드를 호출함.
+public class Executor{
+    public static void main(String[] args){
+        try{
+	        List<Object> parameters = new ArrayList<Object>();
+	        parameters.add(1);
+	        parameters.add("Y");
+	        ...
+	        Application application = new Application();
+	        Shop shop = application.view(parameters);
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+    }
+}
+
+위의 Executor클래스의 경우에는 JDBC프로그래밍의 단점을 그대로 가지고있음.
+인터페이스 호출 순서에 맞추어 작성된 전형적인 JDBC프로그래밍임.
+이를 SqlMapper클래스를 사용하여 좀더 유연한 구조로 바꿀 수 있음.
+
+#SqlMapper클래스에 구현되어야 할 기능
+1) 중복된 기능 추출
+2) 외부 파일 정의
+3) 인자와 결과를 자동 처리
+4) 단순한 실행 메소드 정의
+
+Application클래스에서 중복된 기능은 JDBC드라이버 로딩과 DB연결및 해제하는 부분임.
+이를 SqlMapper클래스에 정리하면 좀 더 유연한 구조가 됨.
+
+public class SqlMapper{
+    private Connection connection;
+    public SqlMapper(){
+        try{
+            // JDBC드라이버 로딩
+            Class.forname("oracle.jdbc.driver.OracleDriver");
+        } catch (ClassNotFoundException e){
+            throw new RuntimeException(e){
+        }
+    }
+    protected Connection connect() throws SQLException{
+        try{
+            if(connection == null){
+                connection = DriverManager.getConnection{
+                    ...
+                }
+            }
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+            return connection;
+    }
+}
+
+위와같이, 자원을 해제하는 부분은 protected void release()라는 메서드롤 만들어 따로 생성.
+원래의 JDBC인터페이스의 결과라고 할 수 있는 Connection, PreparedStatement, Resultset을 private으로 미리 선언해두고, 드라이버로딩, DB연결, 자원해제 부분을 별도의 메서드로 만들어 놓음.
+
+이렇게 만들어진 SqlMapper클래스를 상속한 Application클래스를 생성.
+
+public class Application extends SqlMapper{
+    public void view(List<Object> parameters) throws SQLException{
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        Shop shop = null;
+        try{
+            preparedStatement = connect().preparedStatement( SQL구문 );
+            preparedStatement.setInt(1, (Integer)parameters.get(0));
+            preparedStatement.setString(2, (String.valueOf(parameters.get(1));
+            // 쿼리문 실행 및 결과 반환
+            resultSet = preparedStatement.executeQuery();
+            // 결과 처리	---> resultSet의 결과를 미리 선언해놓은 도메인 객체에 담음.
+            if(resultSet.next()){
+                shop = new Shop();
+                shop.setShopNo(resultSEt.getInt("SHOP_NO"));
+                ...
+            }
+            }catch(ClassNotFoundException e){
+                throw new RuntimeException(e);
+            }catch(SQLException e){
+                throw e;
+            }finally{
+               release();
+            }
+        return shop;
+    }
+}
+
+#외부 파일 정의
+변경될 가능성이 높은 소스 코드를 외부 파일에 정의하여 이를 실행 시점에 읽어옴
+--> 수정사항이 발생했을 때, 다시 컴파일 할 필요가 없음.
+// DB설정과 쿼리문 정의부분.
+
+src/resources/jdbc/config-jdbc.properties
+프로퍼티 파일에는 SqlMapper클래스에서 추출한 DB설정값을 작성.
+driver=oracle.jdbc.driver.OracleDriver
+url=jdbc:oracle:thin:@localhost:1521:xe
+username=mybatis
+password=mybatis$
+
+SqlMapper클래스에는 configurationAsProperties()메소드를 추가로 작성함.
+여기서는 ClassLoader클래스의 getResourceAsStream()메소드를 사용하여 DB설정 프로퍼티 파일을 읽어오는 코드를 작성함.
+
+public class SqlMapper{
+    //DB설정 프로퍼티 파일 경로
+    private String configurationResource = "resources/jdbc/config-jdbc.properties";
+    //프로퍼티를 저장할/읽어들일 Properties파일 생성
+    private Properties configuration = new Properties();
+    
+    //기본 생성자
+    public SqlMapper(){
+        try{
+            //DB설정 프로퍼티 파일 로딩 메소드 호출
+            configurationAsProperties();
+            //JDBC드라이버 로딩
+            Class.forName("configuration.getProperty("driver");
+        }catch(Exception e){
+            throw new RuntimeException(e);
+        }
+    }
+
+    //DB설정 프로퍼티 파일 로딩
+    private void configurationAsProperties() throws IOException{
+        ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+        InputStream inputStream = contextClassLoader.getResourceAsStream(configurationResource);
+
+        try{
+            configuration.load(inputStream);
+        }catch(IOException e){
+            throw e;
+        }finally{
+            inputStream.close();
+        }
+    }
+}
+
+위의 프로퍼티파일을 읽은 InputStream객체를 Properties객체의 load()메소드에 인자로 전달하면
+DB설정이 담긴 프로퍼티 객체를 반환받을 수 있음.
+이때, InputStream객체가 null이라면 IOException이 발생함.
+
+이처럼, 메소드를 활용하여 SqlMapper객체를 생성시에 DB설정값이 담긴 프로퍼티파일을 읽어오도록 하여 다음과 같은 기본 생성자에서 configurationAsProperties()메소드를 호출.
+
+이후 DB설정 프로퍼티 파일에 작성한 설정값을 사용하여 소스코드를 대체.
+
+//DB연결부분
+protected Connection connect() throws SQLException{
+    try{
+        if(connection == null){
+            connection = DriverManager.getConnection(
+                configuration.getProperty("url"),
+                configuration.getProperty("username"),
+                configuration.getProperty("password"));
+            }
+            return connection;
+        }catch(SQLException e){
+            throw e;
+        }
+    }
+    ...
+}
+
+위와 같은 방식으로 외부 프로퍼티 파일에 쿼리문을 정의한후, 메서드를 통해 읽어옴.
+src/resources/jdbc/sql.properties
+쿼리문 역시 properties파일이므로, 쿼리문 아이디를 식별자로 사용함.
+select=SELECT SHOP_NO, SHOP_NAME, SHOP_LOCATION, SHOP_STATUS FROM SHOP WHERE SHOP_NO=? AND SHOP_STATUS=?
+
+SqlMapper에 쿼리문 프로퍼티파일을 위한 sqlAsProperties()메서드를 작성
+
+public class SqlMapper{
+    //DB설정 프로퍼티 파일 경로
+    private String configurationResource = "resources/jdbc/config-jdbc.properties";
+    private String sqlResource = "resouces/jdbc/sql.properties";
+    //프로퍼티를 저장할/읽어들일 Properties파일 생성
+    private Properties configuration = new Properties();
+    private Properties sql = new Properties();
+    
+    //기본 생성자
+    public SqlMapper(){
+        try{
+            //DB설정 프로퍼티 파일 로딩 메소드 호출
+            configurationAsProperties();
+            //쿼리문 프로퍼티 파일 로딩 메소드 호출
+            sqlAsProperties();
+            //JDBC드라이버 로딩
+            Class.forName("configuration.getProperty("driver");
+        }catch(Exception e){
+            throw new RuntimeException(e);
+        }
+    }
+
+    //DB설정 프로퍼티 파일 로딩
+    private void configurationAsProperties() throws IOException{
+        ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+        InputStream inputStream = contextClassLoader.getResourceAsStream(configurationResource);
+
+        try{
+            configuration.load(inputStream);
+        }catch(IOException e){
+            throw e;
+        }finally{
+            inputStream.close();
+        }
+    }
+}
+
+    //쿼리문 프로퍼티 파일 로딩
+    private void sqlAsProperties() throws IOException {
+        ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+        InputStream inputStream = contextClassLoader.getResourceAsStream(sqlResource);
+        try{
+            sql.load(inputStream);
+        }catch(IOException e){
+            throw e;
+        } finally {
+            inputStream.close();
+        }
+    }
+}
+
+이때, 쿼리문 properties의 getProperty()메소드를 통해 쿼리문을 가져올수 있지만, 
+쿼리문을 직접 가져오지말고 별도의 메소드를 사용.
+SqlMapper클래스에 sqlById()메소드를 추가로 작성.
+이후 쿼리문아이디에 매핑되는 쿼리문을 쿼리문 프로퍼티 객체로부터 반환하는 코드를 작성.
+이전, 프로퍼티 파일에 작성한 쿼리문 아이디를 인자로 지정함.
+
+public class SqlMapper{
+    ...
+    //쿼리문 반환
+    protected String sqlById(String sqlId){
+        return sql.getProperty(sqlId);
+    }
+    ...
+}
+
+이후 SqlMapper클래스를 수정하고나서는 Application클래스를 수정.
+public class Application extends SqlMapper{
+    ....
+    try{
+        String sql = sqlById("select");
+        preparedStatement = connect().prepareStatement(sql);
+        ...
+
+
+#인자와 결과 자동 처리.
+1) 쿼리문에 파라미터를 바인딩하는 코드는 매개변수의 개수가 많을수록 길어짐.
+2) 결과 객체에 Result를 바인딩하는 코드는 반환된 컬럼 개수가 많아질수록 길어짐.
+--> 이들을 동적으로 처리하면 좀 더 간결한 코드가 될 수 있음.
+:: 매개변수를 동적으로 지정한 쿼리문에 동적으로 바인딩하는 메소드 작성.
+보통의 파라미터는 자바빈도 있지만, 주로 List형식 또는 Map형식으로 전달됨.
+각각에 해당하는 메서드들을 만들어 줄 예정.
+
+List<Object> parameters = new ArrayList<Object>();
+parameters.add(1);
+parameters.add("Y");
+
+SELECT SHOP_NO, SHOP_NAME, SHOP_LOCATION, SHOP_STATUS FROM SHOP WHERE SHOP_NO=? AND SHOP_STATUS=?
+
+...
+public class SqlMapper{
+    ...
+    //List타입 객체에 담긴 파라미터를 쿼리문의 매개 변수에 바인딩
+    protected String parameterBindingByList(String sqlId, List<Object> parameters){
+        try{
+        String query = sqlById(sqlId);
+        String[] querySplit = query.split("[?]");
+    
+        String value = "";
+        StringBuilder replaceSql = new StringBuilder("");
+
+        //쿼리문 지정 매개 변수가 여러개인 경우
+        if(querySplit.length > 1){
+            for(int i = 0; i<parameters.size() ; i++){
+                replaceSql.append(querySplit[i]);
+                value = (parameters.get(i) == null) ? "" : parameters.get(i).toString();
+                // 파라미터 값이 숫자타입일경우 true, 문자일경우 false
+                boolean isNumber = Pattern.matches ("[0-9]+", value);
+                if(isNumber){
+                    replaceSql.append(value);
+                }else{
+                    repolaceSql.append("'").append(value).append("'");
+                }
+
+                if(!querySplit[0].contains("SELECT")&&i==(parameters.size()-1)){
+                    replaceSql.append(")");
+                }
+
+        //쿼리문 지정 매개 변수가 하나인 경우
+        }else if(querySplit.length ==1){
+            replaceSql.append(querySplit[0]);
+        
+            value = (parameters.get(0) == null) ? "" : parameters.get(0).toString();
+            //파라미터 값이 숫자 타입 true 문자타입 false
+            boolean isNumber = Pattern.matches("[0-9]+", value);
+            if(querySplit[0].contains("WHERE")){
+                if(isNumber){
+                    replaceSql.append(value);
+                }else{
+                    replaceSql.append("'").append(value).append("'");
+                }
+            }
+        }   
+        return replaceSql.toString();
+    }catch (Exception e){
+        throw e;
+    }
+}
+
+아니야 코드 정리할 필요 없을거같애
+
+이후 SqlMapper클래스에 parameterBindingByList()메소드를 추가하여 Application을 수정.
+String sql = parameterBindingByList("select", parameters);
+
+List를 사용해서 동적으로 파라미터 처리가 가능하지만
+이경우에는 파라미터의 순서가 틀리면 잘못된 쿼리문이 나오게 됨.
+Map을 사용한다면 매개변수에 정확히 바인딩이 가능함.
+
+Map은 순서보다 프로퍼티명이 중요함.
+등록된 key의 이름과 일치하는 매개변수에 파라미터를 바인딩.
+리스트와는 다른 새로운 쿼리문 형식이 필요함.
+#{프로퍼티명}
+sql-inline.properties
+select=SELECT SHOP_NO, ..... FROM SHOP WHERE SHOP_NO=#{shopNo} AND SHOP_STATUS = #{shopStatus}
+
+Map<String,Object> parameters = new HashMap<String, Object>();
+parameters.put("shopNo", 1);
+parameters.put("shopStatus", "Y");
+
+if(parameters.size() > 0){
+    String key = "";
+    String value = "";
+    Iterator<String> iteratorKey = parameters.keySet().iterator();
+    while(iteratorKey.hasNext()){
+        key = iteratorKey.next();
+        value = (parameters.get(key)==null)?"":parameters.get(key).toString();
+
+        boolean isNumber = Pattern.matches("[0-9]+", value);
+        if(isNumber){
+            query =query.replaceAll("#\\{"+key+"\\}", value);
+        }else{
+            query = query.replaceAll("#\\{"+key+"\\}","'"+value_+"'");
+        }
+
+
+쿼리문 뿐만아니라 결과인 Result객체에 쿼리문의 실행 결과를 동적으로 바인딩 하는 메소드도 필요.
+결과가 단일 레코드 라고 할때, 아래와 같음.
+실행 결과를 동적으로 바인딩 할 때에는 자바의 Reflection을 사용함.
+Reflection은 객체를 통해 클래스의 정보를 추출한다.
+쿼리문의 실행 결과를 Result객체로 바인딩하기 위해서는, 우선 Result객체를 생성해야 하는데,
+이를 동적으로 생성하기 위해서는 Result타입을 구성하는 프로퍼티 타입, 프로퍼티 명, 프로퍼티 값에 대한 정보가 필요함.
+이는, 인자로 전달한 ResultSet객체로 알 수 있음.
+
+protected static <T> T resultByType (ResultSet resultSet, String type) throw Exception{
+    try{
+        List<Object> fieldnames = new ArrayList<Object>();
+        List<Object> fieldTypes = new ArrayList<Object>();
+        List<Object> filedValues = new ArrayList<Object>();
+
+        if (resultSet.next()){
+            for(int i = 1; i<=resultSet.getMetaData().getColumnCount(); i++){
+                String column = resulttSet.getMetaData().getColumnName(i); // 컬럼명 추출
+                String[] columnSplit = colmn.split("[_]");
+                StringBuilder camelColumn = new StringBuilder();//컬럼명추출후 프로퍼티명으로 변환
+                for(int j=0; j<columnSplit.length; j++){
+                    if(j==0){
+                        camelColumn.append(columnSplit[j].toLowerCase());
+                    }else{
+                        camelColumn.append(
+                            colmnSplit[j].toUpperCase().charAt(0));
+                        camelColumn.append(
+                            columnSplit[j].substring(1, columnSplit[j].length()).toLowerCase());
+                    }
+                }
+                fieldnames.add(camelColumn);//컬럼값 추출 후 프로퍼티 값으로 등록
+                filedValues.add(resultSet.getString(column));//추출한 컬럼명을 프로퍼티 타입으로 변환
+                //컬럼 타입을 추출한 다음 프로퍼티 타입으로 변환
+                switch (resultSet.getMetaData().getColumnType(i)){
+                    case 2:
+                        fieldTypes.add(int.class);
+                        break;
+                    case 12:
+                        fieldTypes.add(String.class);
+                        break;
+                    default:
+                        fieldTypes.add(String.class);
+                        break;
+               }
+            }
+        }
+        return null;
+    }catch(Exception e){
+        throw e;
+    }
+}
+
+Constructor 객체의 newInstance()메소드를 사용하여 추출한 Result타입의 프로퍼티 타입, 프로퍼티 명, 프로퍼티 값을 가지고 Result객체를 생성할 수 있음.
+
+Class objectType = Class.forName(type);
+Class[] filedType= new Class[fieldNames.size()];
+for (int i =0; i<fieldNames.size(); i++){
+    filedType[i] = (Class) fieldTypes.get(i);\
+}
+Constructor constructor = objectType.getConstructor(filedType);
+Object listConstructor[] = new Object[fieldNames.size()];
+for( int i = 0; i<fieldNames.size(); i++){
+    if(filedType[i]==int.class){
+        (STring)filedValues.get(i);
+    }else{
+        listConstructor[i] = (String)filedValues.get(i)_;
+    }    
+}
+return (T) constructor.newInstance(listConstructor);
+
+이후, SqlMapper클래스를 보게되면 호출 메서드들이 같은구조를 가지는것을 볼 수 잇음.
+호출하고자 하는 메서드를 정의
+public <T> selectOne(String sqlId, Map<String, Obejct> parameters, String type) throw Exception{
+    try{
+        String sql = parameterBindingByMap(sqlId, parameters);
+        preparedStatement = connect().prepareStatement(sql);
+        resultSet = preparedStatement.executeQuery();
+        return resultByType(resultSet, type);
+    }catch)Exceptio e){
+        throw e;
+    }finally{
+        release();
+    }
+}
+이와 같은식으로 메서드를 정의하고 application클래스에서 해당 메서드호출로 대체하여 사용함.
+public class Appication extends SqlMapper{
+    public Shop view(Map<String, Object> parameters) throws Exception{
+        return selectOne("select", parameters, "org.mybatis.domain.Shop");
+    }
+}
+
+
+##MyBatis소개
+SQL매퍼 프레임워크
+아이바티스가 시초. 
+외부 파일에 쿼리문을 정의했기 때문에 개발 및 유지 보수성을 높일 수 있음.
+http://mybatis.org
+
+
+
+
+
+===========================2장=================================
+
+마이바티스 프로그래밍은 자바 어플리케이션과 데이터베이스 사이에 위치함.
+자바어플리케이션에서 데이터베이스로의 요청과 응답을 도맡아 처리함.
+
+MyBatis의 경우에는 자바 어플리케이션 개발 환경과 웹 어플리케이션 개발 환경 두가지로 나뉘어짐.
+자바 어플리케이션 개발 환경의 경우에는 main() 메소드 호출을 통해 MyBatis를 실행하며,
+MyBatis의 작동방식 및 매필 구문의 실행 결과를 바로 확인이 가능하여
+MyBatis구성 요소와 속성 학습에 적합함.
+
+웹 어플리케이션 개발 환경의 경우에는 Spring을 통해 MyBatis를 실행시키며,
+최종적으로, MyBatis의 포스팅으로는 작게나마 Spring을 사용했던 작고, 귀여운, 프로젝트의 
+JdbcTemplate과 DataSource를 사용했던 구조를 MyBatis를 통해서 사용해보도록 하려고 한다.
+현재는 공부하는 단계이므로 자바 어플리케이션 개발 환경에서 MyBatis를 사용해보려고 함.
+
+우선 MyBatis를 공부하려고 한다면, Java와 이클립스는 있을거라고생각하고 설치는 넘어가도록 함.
+MyBatis라이브러리는 마이바티스 공식 홈페이지에서 다운이 가능함.
+https://github.com/mybatis/mybatis-3/releases
+여기서 MyBatis의 .zip파일을 다운받음.
+기본프록시 도구...?
+http://mvnrepository.com/artifact/cglib/cglib/3.2.4
+http://mvnrepository.com/artifact/org.ow2.asm/asm/5.1
+아파치 Log4j2
+https://logging.apache.org/log4j/2.x/download.html
+아직까지는 기본프록시도구와 아파치가 왜 필요한지 잘 모르겟음.
+mysql-connector-java도 받고..
+
+일단, 자바 프로젝트를 생성하고
+프로젝트 하위로 lib폴더를 생성.
+이 폴더에 미리 다운받아놓은 jar파일들을 모두 넣어놓음.
+이후 프로젝트 오른쪽클릭 - properties - java build path - lib탭 - add JARs 로 해당 프로젝트의
+lib디렉토리의 모든 jar파일들을 선택해줌.
+
+
+마이바티스 객체를 이요해서 매핑 구문을 실행
+2개의 XML파일을 순차적으로 읽어들임.
+1) 마이바티스 설정 XML
+2) 마이바티스 매퍼 XML
+자바 어플리케이션 구성에는 위의 2가지 XML과 실행 클래스가 필요함.
+작성순서는 매퍼 XML, 설정 XML, 실행 클래스 작성(Executor클래스)순으로 작성하는게 효율적.
+
+매퍼XML은 쿼리문을 정의한 파일. 사용자는 XML형식을 몰라도 상관없음.
+정상 작동되는지 검증을 완료한 쿼리문을 매퍼XML파일에 옮김.
+이후 조회의 경우 <select>태그로 감쌈.
+이런 조회태그인 <SELECT>태그는 여러 번 지정할수 있음.
+다수의 <SELECT>태그는 각각의 태그의 속성에 id속성을 지정하여 구분함.
+해당 <selec>태그의 기능을 잘 나타낼 수 있는 id값으로 지정하며, 중복되지 않도록 주의.
+조회시에 파라미터가 필요하다면 파라미터 속성을 추가가 가능함.
+속성은 parameterType속성과 parameterMap속성중 하나를 선택할 수 잇음.
+parameterType :: 매개변수에 파라미터를 바인딩할 때 데이터 타입을 변경할 필요가 없을때
+parameterMap :: 데이터 타입을 변경 할 필요가 있을때.
+조회 결과를 반환받을 필요가 있다면, <select>구성요소에 result속성을 추가할 수 있음.
+속성은 resultType속성과 resultMap속서웅 하나를 선택
+resultType :: result객체에 result를 바인딩할 때 데이터 타입이나 프로퍼티 명을 변경할 필요가 없을때
+resultMap :: 반대로, 바인딩할 때 데이터 타입이나 프로퍼티 명을 변경 할 필요가 있을 때
+
+<mapper>태그는 마이바티스 매퍼XML파일의 최상위 구성 요소.
+매퍼XML은 자바 어플리케이션 내에 여러개가 존재 할 수 있음.
+구분을 위해서는 네임스페이스를 사용함.
+네임스페이스 = 마이바티스 매퍼 인터페이스 패키지 경로 + "." + 테이블명+Mapper
+
+마이바티스 매퍼 XML파일에 사용한 구성 요소나 속성을 찾는 방법
+--> 매퍼 XML상단에 선언한 DTD파일을 통해서 찾을 수 있음.
+DTD파일에 정의되어 있지 않은 요소/속성 또는 작성순서가 틀릴시 에러가 발생함.
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+---
+마이바티스 설정 XML
+MyBatis실행에 필요한 설정을 정의한 XML형식의 파일
+다양한 설정이 가능(4장참고)
+
+마이바티스 설정 XML에서는 환경 구성 요소가 필수 구성 요소임.
+환경 구성 요소에는 데이터 소스 구성 요소와 트랜잭션 관리자 구성 요소로 구성됨.
+데이터 소스 구성 요소  :: DB연결에 필요한 설정을 지정
+트랜잭션 관리자 구성 요소 :: 
+
+데이터 소스 구성 요소
+<dataSource>태그를 사용.
+1) 데이터 소스 팩토리 타입을 지정. 
+    이에따라 사용 가능한 데이터 소스가 달라짐.
+    <dataSource>의 type속성을 사용하여 지정함ㅁ.
+    UNPOOLED, POOLED, JNDI타입이 존재함.
+2) 데이터베이스 연결에 필요한 설정을 지정.
+    프로퍼티 구성 요소를 사용함.
+    <property>구성 요소를 사용함.
+    <property>구성요소의 name속성과 value속성을 통해서 전달하려는속성명과 속성값을 지정
+    이때, 지정가능한 속성과 속성명은 데이터 팩토리 타입에따라 다름.
+    <property>속성은 <dataSource>속성 사이에 여러개가 올 수 있음.
+    driver, url, username, password
+트랜잭션 관리자 구성 요소
+이를 설정하면 트랜잭션 처리에 필요한 설정을 지정할 수 있음.
+<transactionManager>구성요소를 통해 지정.
+<transactionManager>는 <dataSource>이전에 작성되어야 함.
+1) <dataSource>이전에 작성
+2) 트랜잭션 관리자 팩토리 타입 지정. 
+    type속성. JDBC, MANAGED
+3) dataSource와 transactionManager는 밀접한 관련. 환경구성요소를 사용해 두 요소를 묶어 관리.
+    <environment>태그로 둘을 둘러쌈.
+    이때, 여러개의 environment구성요소가 올 수 있으며, id속성을 통해 구분함. 중복되지않도록주의.
+    만약, 다수의 environment구성요소를 사용할 경우 environments구성요소로 구분함.
+    environments의 default속성을 통해 기본 환경이 될 환경의 id값을 지정.
+4) 앞서 작성한 MyBatisMapper XML지정을 할 때에 <mapper>구성요소를 사용함.
+    mapper구성요소는 </environments>이후에 작성.
+    mapper는 속성으로 resource속성을 가지며, 속성값으로 마이바티스 매퍼 XML파일의 경로와 파일명지정.
+    mapper역시 여러개를 가질 수 있으며 mappers속성을 묶어 관리함.
+5) 모든 태그는 <configuration>태그 안에 작성되어야 함.
+6) DTD가 존재함
+    <!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+      "http://mybatis.org/dtd/mybatis-3-config.dtd">
+
+실행클래스
+main()에서 MyBatis객체를 생성. 이후 목록 조회 매핑 구문 실행. 
+이 과정에서 MyBatis설정 XML과 MapperXML파일을 순차적으로 읽어들임.
+Class를 생성. 제일 상단에 static블록을 추가함. 이는 객체를 생성할 때 한번만 호출되므로 클래스 변수 초기화에 사용됨.
+
+SqlSessionFactoryBuilder객체의 build()메소드에 마이바티스 설정 XML파일을 읽어들인 Reader객체를 인자로 전달하면, 생성된 SqlSessionFactory객체를 반환받을 수 잇음.
+
+main에서 SqlSession객체 생성을 위해 sqlSessionFactory.openSession();으로 세션 및 트랜잭션 시작.
+다수의 레코드 조회는 selectList(조회 매핑 구문 아이디 [, 파라미터 객체])
+
+뭔가 이것저것했는데 흐음...
+
+일단, 유용한 로그 출력을 위해 아파치 Log4j2설정 XML파일 추가 작성.
+아직 내용 설명은 안하고 바로 XML작성을 src디렉토리 바로 아래에 작성하고
+자바 어플리케이션 소스에서 따로 수정 없이 실행
+아무 반응도없던곳에서 DEBUG모드로 어느정도 이해가 가게 내용이 출력됨.
+조회결과는 Log단계가 TRACE단계 이상일 때만 출력됨.
+하지만 TRACE단계일 경우 필요없는 로그까지 모두 출력됨.
+이때, <Logger>의 구성요소를 사용함. 루트가 아닌, 특정 파일 혹은 패키지만 로그 단계 지정 가능.
+
+Log4j2의 경우에는 뭔가 잘 알아놓으면 좋을거같다고 확 느껴지네
+좀 알아봐야될듯. MyBatis정리하면서 따로 알아보기.
+
+--에러
+
+1) MyBatis Mapper XML파일작성을 잘못한 경우
+    - 잘못된 DTD파일 선언 :: !DOCTYPE에 작성한 namespace관련 에러.
+    - 정의되어 있지 않은 구성 요소를 사용  :: 매퍼에서 dataSource태그를 쓴다거나 할때 발생.
+    - SQL문법 오류가 있는 매핑 구문을 정의
+2) MyBatis 설정 XML파일작성을 잘못한 경우
+    - 잘못된 DTD파일 선언
+    - 정의되어 있지 않은 구성 요소를 사용  :: 설정에서 resultMap구성요소를 쓴다거나 할 때 발생.
+    - 데이터베이스 설정이 틀린 경우  
+    - 마이바티스 매퍼 XML파일의 경로가 틀린 경우
+3) 실행 클래스 작성을 잘못한 경우
+    - 마이바티스 설정 XML파일의 경로가 틀린 경우
+    - 틀린 매핑 구문 아이디를 지정한 경우
+    - 메소드 선택이 잘못된 경우
+
+
+
+========================================================
+3장. 
+MyBatis이용, Data 등록, 조회, 수정, 삭제 프로그래밍 실습.
+특히 데이터 처리에 따라 달라지는 MyBatis매핑 구문 정의 구성 요소와 
+MyBatis객체 사용법을 위주로.
+
+데이터 처리에 따라서
+매퍼 XML파일에 매핑 구문을 지정하는 구성요소와 속성
+매핑 구문 호출 시 사용하는 MyBatis객체의 메소드가 변경됨.
+
+작성순서
+1. 도메인 클래스 작성
+2. 마이바티스 매퍼XML파일 작성
+3. 마이바티스 설정XML파일 작성
+4. 실행 클래스 작성(Executor)
+5. 로깅 설정
+
+1) 도메인 클래스 작성
+도메인 클래스는 매핑 구문 호출시의 파라미터 객체 혹은 조회 결과를 반환받을 때의 리절트 객체로 사용됨.
+이름 규칙이 없다면 도메인 클래스 명 = 자바 식별자 명명규칙에 따른 테이블 명.
+
+도메인 클래스를 생성하고 기본생성자와 모든 프로퍼티를 인자로 하는 생성자, getter, setter생성.
+캐시를 사용 할 때 Serializable인터페이스를 구현하지 않으면 에러가 발생함.
+이를 구현클래스로 만들어줌.
+
+등록 구성 요소는 <insert>구성요소를 사용해서 지정한다.
+insert 구성요소는 여러번 지정 가능함.
+이 역시 id속성을 통해서 구분함. 중복되지 않도록 주의.
+
+등록 매핑 구문에 파라미터가 필요하면 <insert>구성요소에 속성을 추가할 수 잇음.
+파라미터의 데이터 타입을 변경 할 필요가 없기때문에 ParameterType을 사용함.
+parameterType속성에 해당 도메인의 풀패키지명을 지정.
+이후, SQL구문에 파라미터가 바인딩되는 매개 변수를 '인라인 파라미터 표기 형식'으로 변경.
+이때, 표기명은 도메인 클래스의 프로퍼티명과 동일하게 지정.
+등록은 반환 결과과 없으므로 ResultType생략.
+
+설정 XML
+TypeAlias.
+:: 패키지 경로를 포함한 긴 자바 타입 대신, 지정한 짧은 약어를 사용할 수 있도록 해줌.
+:: alias속성에 사용할 별칭을
+:: type속성에 풀패키지명을 입력함.
+:: typeAliases로 모든 tpeAlias를 묶음.
+:: typeAliases는 <configuration>바로 아래에 있어야 함.
+:: typeAliase를 설정하게 되면 매퍼XML에서 parameterType과 같은 곧에서 약어 사용이 가능해짐.
+
+실행클래스에서 데이터 등록 메서드는
+insert(등록 매핑 구문 아이디[, 파라미터 객체])
+
+트랜잭션은 SqlSession객체의 openSession()메소드가 호출되는 시점에 시작
+commit()메소드가 호출되는 시점에 커밋됨.
+즉, openSession과 commit()사이의 실행되는 구문은 동일한 트랜잭션으로 묶임.
+
+조회.
+조회에서도 parameterType을 사용시에는 인라인 파라미터 표기형식으로 쿼리 수정해주어야함.
+조회의 경우에는 반환된 결과가 있기 때문에 resultType속성을 사용함.
+selectOne(조회 매핑 구문 아이디)
+selectOne(조회 매핑 구문 아이디, 파라미터 객체)
+selectMap(조회 매핑 구문 아이디, 프로퍼티 키)
+selectMap(조회 매핑 구문 아이디, 파라미터 객체, 프로퍼티 키)
+
+SQL문은 대소문자에 상관이 없지만 인라인 파라미터 표기형식에서는 프로퍼티의 이름을 사용하기 때문에 대소문자를 지켜주는게 맞는듯?
+
+객체를 생성하고 조회에 사용할 파라미터를 주입시킴.
+이후 sqlSession의 조회 메서드를 수행하면서 파라미터로 해당 객체를 던져줌.
+Result결과 객체타입으로 객체를 받아주기만 하면 됨.
+코드처럼 해당 객체가 파라미터용으로 사용된, 해당 변수를 그대로 사용해도 되고,
+새로 변수만 만들어서 할당해 줘도 됨.
+
+특정 객체에 대한 디버깅을 수행하고 싶을 때(?)
+private static final Log log= LogFactory.getLog(클래스 입력);
+이후 진행하면서 
+log.debug(객체.프로퍼티);
+ㅇ부분은 좀 검색좀.
+
+나의 경우에는 상관 없었지만....
+MyBatis는 조회된 컬럼명(ex)STUDENT_NAME)과 동일한 프로퍼티명을 찾아서 프로퍼티 값에 컬럼값을 바인딩함.
+나는 컬럼명 언더바를 안썻지만, 보통은 언더바 표기법, 프로퍼티명은 낙타표기법을 사용함.
+당연히 이름이 동일하지 않으므로 정상적으로 Result를 얻지 못함.
+조회한 컬럼명과 일치하는 프로퍼티명을 하나도 찾지 못하면, resultType 속성 값에 지정한 리절트 객체는 생성되지 않음.
+하나만 일치하면?
+Student2클래스를 생성하고 mapper에서 Student2라는 alias로 똑같이 패키지 경로 지정해줌.
+이후 Mapper에서 resultType으로 Student2를 넣고
+자바클래스에서 실행해보니
+똑같이 들어는감.
+propertyType이 어떻든 resultType이 어떻든 일단 컬럼명과 프로퍼티명을 비교하여 값을 주입.
+없는 값 또는 일치하지 않는값은 null인채로 생성됨.
+
+컬럼명과 프로퍼티명 불일치 시에 매핑방법.
+1) 조회 매핑 구문에 프로퍼티명과 동일한 컬럼 별칭 지정.
+:: 가장 손쉽지만 프로퍼티명 변경시 일일이 변경해야됨.
+2) 매퍼 XML에 resultMap을 정의.
+:: resultMap구성요소 사용시 컬럼명과 바인딩되는 프로퍼티명 매핑 가능.
+resultMap구성요소는 매퍼XML에서 사용하며, 최상위구성요소인 <mapper>다음에 지정함.
+<mapper>
+<resultMap>
+  <result />
+</resultMap>
+
+<result>구성 요소는 매핑 구문에 정의한 조회 컬럼과 일대일로 매핑됨.
+result구성요소의 column속성을 사용하여 지정함.
+resultMap은 반환된 결과를 type속성에 지정한 result객체로 전달합니다.
+그렇기 때문에 resultMap에는 type속성을 통해 타입을 명시해야 합니다.
+조회된 컬럼음 column속성에 지정한 컬럼명과 일치한 <result>구성요소에 바인딩.
+<result>구성요소는 지정한 프로퍼티명과 동일한 리절트 객체의 프로퍼티에 바인딩됨.
+이때, 프로퍼티명 지정을 위해서는 property속성을 사용함.
+<result column="STD_NUM" property="stdNum"/>
+이런식으로 작성하며 이후 STD_NUM컬럼은 stdNum프로퍼티에 바인딩됨
+이때, 만약 해당 컬럼이 기본키라면, result구성요소가 아닌 id구성요소로 지정해야함.
+id구성요소는 동일한 속성을 가지지만, result구성요소들보다 앞에 위치해야 함.
+다수의 ResultMap이 올 수 있으므로, 각 ResultMap에 id속성을 통해 구분값을 지정.
+이후 나중에 MapperXML에서 select등의 요소의 resultMap으로 해당 id값을 주입.
+
+3) MyBatis 설정 XML파일에 <setting>구성요소 활용
+언더바 표기 형식을 낙타 표기법으로 자동 매핑할지에 대한 여부를 초기 세팅으로 가지고잇음.
+기본값음 false
+<setting>구성요소는 <typeAliases>구성요소 이전에 와야 함.
+<setting name="mapUnderscoreToCamelCase" value="true"/>로 구성
+setting역시 여러 설정요소가 있으며 여러번 setting구성요소를 사용이 가능함.
+이들은 settings구성요소로 묶어 표현함.
+
+=======================
+
+수정.
+
+수정은 MyBatis 매퍼 XML에서 <update>구성요소를 사용하여 쿼리를 지정함.
+역시 여러번 지정 가능하며, id속성을 통해 구분함. 중복에 주의
+파라미터 필요시 파라미터 지정이 가능함.
+parameterType=""
+파라미터 타입 지정 후 해당 파라미터 부분을 인라인 파라미터 표기명으로 전환.
+이때, 프로퍼티 명과 동일하게 지정
+수정은 반환결과가없으므로 resultTypeㅐ생략.
+
+실행클래스.
+수정 -> sqlSession.update(수정매핑구문아이디 [, 파라미터 객체])
+
+삭제.
+삭제는 MyBatis 매퍼 XML에 <delete>구성요소를 사용하여 쿼리를 지정함.
+여러번 지정가능하며, id로 구분. 중복에 ㅔ주의
+매개변수가 필요하기때문에 parameterType지정.
+이후 매개변수 인라인 파라미터 표기법으로 변경. 프로퍼티명과 동일하게 해야함에 주의.
+
+실행클래스.
+삭제 -> sqlSession.delete(삭제매핑구문아이디[, 파라미터 객체])
+
+=====================================
+
+7장/8장 이후에 다시 심화로 오는거로.
+
+
+
+#8장.
+마이바티스-스프링 연동 라이브러리를 사용하면, 마이바티스 라이브러리를 직접 사용하는 것보다 쉽게 스프링과 마이바티스를 연동할 수 있음.
+ex) 스프링 설정을 통해 마이바티스 객체를 생성 및 주입 할 수 있게됨.
+
+1) SqlSessionTemplate객체를 사용한 연동 방식
+2) SqlSessionDaoSupport 객체를 사용한 연동 방식
+3) 자동 매핑 방식
+
+1) SqlSessionTemplate
+:: 스프링 빈 컨테이너에 SqlSessionTemplate객체를 등록한 다음 데이터 접근 객체에서 SqlSessionTemplate객체를 주입받아 사용하는 방식.
+
+작성순서....
+도메인클래스 
+컨트롤러
+스프링 설정 XML
+배포 서술자 파일 수정 ?
+가게 목록 조회 화면 작성(view)
+서비스 인터페이스와 서비스 클래스
+데이터 접근 인터페이스와 데이터 접근 클래스 작성
+프로퍼티 파일 작성
+스플이 설정 XML파일 분할 작성
+마이바티스 매퍼 XML파일 작성
+
+도메인클래스 
+:: 사용자 입력 정보를 데이터 접근 객체에 전달하거나,
+:: 데이터 접근 객체로부터 반환된 결과를 화면에 전달하는 역할을 함.
+--> 범위/역할에 따라 VO(value object) 또는 DTO(Data Transfer Object)
+
+++++
+Entity
+:: DB의 테이블 내에 존재하는 컬럼만을 속성(필드)으로 가지는 클래스
+:: 상속을 받거나 구현체여서는 안되며, 테이블에 존재하지 않는 컬럼을 가져도 안됨.
+:: RDB에서의 Entity란, 현실세계의 개체를 표현하기 위한 유무형의 실체. --> table
+:: JPA -->@Entity는 엔티티클래스임을 명시. ==> table과 1:1 매핑
+VO(Value Object)
+:: 값 객체.
+:: equals()와 hashcode()를 오버라이딩 하는 것. 
+:: 즉, 각 VO의 모든 속성(필드)가 같아야, 똑같은 객체라고 판별함.
+:: Getter와 Setter를 가질 수 있으며, entity와는 다르게 추가적인 속성을 가질 수 있음.
+:: 여러 테이블의 공통 속성을 모아 만든 BasoVO를 상속받을수도 있음.
+DTO(Data Transfer Object)
+:: 데이터 전송(이동)객체
+:: 주로 비동기 처리를 할 때 사용함.
+:: 비동기 처리시에 VO의 모든 속성을 Jaskson을 통해 JSON으로 바꿀 경우에는 DTO는 필요없음.
+:: 하지만 경우에 따라 필요한 속성만 추려서 JSON형식으로 파싱하여 보낼경우네는
+:: 데이터 가공처리를 위해 DTO를 만들어 주어야 함.
+:: 5가지 필드를 가지는 VO내에서 필요에 따라 3개의 속성만을 JSON변환하고자 할 때
+:: 해당 3가지 속성만을 가지는(메서드는 가지지않는) DTO객체를 생성.
+
+--> 	getter/setter ::VO
+ 	table과 1:1매핑 :: entity
+	필요에 따라 추출/객체사용시 DTO
+https://medium.com/webeveloper/entity-vo-dto-666bc72614bb
+
++Jackson이 있어야 Spring에서 JSON을 사용 할 수 있음.
++spring-boot-starter-web의존성을 타고 올라가면 Jackson이 잡혀있을을 알 수 있음.
++기본 Spring에서는 Jackson을 따로 의존으로 잡아주어야 함.
+
+++
+@Resource 
+:: 빈아이디와 동일한 프로퍼티명을 가진 프로퍼티에 빈이 주입됨.
+@AutoWired
+:: 빈 타입과 동일한 타입을 가진 프로퍼티에 빈이 주입됨.
+:: 동일 타입 두개 이상시 예외발생
+:: @Qualifier한정자 지정 필요.
+@Repository
+:: 데이터 접근 클래스(DAO)에 지정.
+:: 스프링 빈 컨테이너에 데이터 접근 빈으로 등록됨.
+::@Resource어노테이션을 지정한 데이터 접근 인터페이스타입의 프로퍼티에 빈이주입됨.
+
+
+#Spring MyBatis연동
+1) SqlSessionTemplate클래스 사용
+:: 마이바티스-스프링(mybatis-spring) 연동 라이브러리에 존재함. 연동에 있어서 매우 중요한 클래스.
+:: MyBatis기본 구현체인 defaultSqlSession클래스 대신 사용함.
+:: --> 매핑구문실행 / 매퍼객체획득 / 트랜잭션 관리 등.
+::@Resource로 등록시 자동으로 주입됨. 작성자는 바로 사용이 가능.
+
+::lib의 SqlSessionTemplate을 자동주입받기 위해서는 우선 SqlSessionTemplate객체가 스프링이 관리하는 스프링 빈이 되어야 함.
+::이를 위해 SqlSessionTemplate객체를 빈으로 등록.
+::@bean혹은 <bean id="sqlSessionTemplate" class="org.mybatis.spring.SqlSessionTemplate"/>
+::그런데 SqlsessionTemplate은 생성자로 SqlSessionFactoryBean클래스 타입의 빈이 필요함.
+::이 역시 SqlSessionFactoryBean을 스프링빈으로써 등록해야 함.
+::SqlSessionTemplate객체의 constructor-arg 구성요소를 통해 생성자에 인자를 주입 가능.
+::id속성으로 SqlSessionFactoryBean, class로 org.mybatis.spring.SqlSessionFactoryBean 빈 객체 생성.
+::SqlSessionTemplate빈 선언부분에 constructor-arg구성요소 추가. index=0, ref=sqlSessionFactory.
+::그런데 sqlSessionFactory도 세션을 만들기 위한 정보가 필요함. dataSource에 대한 정보
+::<bean id="dataSource" class="org.springframework.jdbc.datasource.SimpleDriverDataSource">
+::이후 <property 구성요소를 통해 name속성에 driverClass url, username, password 를 지정, value로 주입해줌.
+::url의 value에는 db지정 이후 파라미터로 serverTimezne=UTC를 넣어줘야 함. 한국 시간 뭐라뭐라
+
+::빈 프로퍼티값에 설정정보를 직접입력하는것은 관리가 힘들어짐.-->프로퍼티파일을 이용.
+::스프링 설정XML --> <util:properties>구성요소를 사용/지정.
+::id속성에 빈아이디를, location에 프로퍼티 파일이 위치한 경로를 지정.
+::#{database['database.driverclass;]} 의 꼴로 사용할 프로퍼티 등록.
+
+::스프링 설정도 여러 설정이 추가될수록 난잡해짐.
+::다수의 설정XML을 나누는것으로 좀 더 세부화하여 관리할 수 잇음.
+
+::다수의 설정XML을 표기하는건 XML내에 <import>구성요소를 통해 resoucre속성값에 해당 xml을 지정하여 하나로 합쳐주는 방법도 잇으며, 
+다른 방법으로는 servlet등록시 init-param에서 param-value에 두개를 다 적어주는 방법도 있음.
+
+#당연히 실행은 안됨. mapper작성ㅇㅎ지 않았기 때문.
+SqlSessionTemplate객체를 생성했던 SqlSessionFactoryBean에서는 매퍼 xml관련 메서드를 제공.
+::setMapperLocations(Resource[])
+::setTypeAliasesPackage(String)
+--> SqlSessionFactoryBean xml설정 부분에서 property 추가.
+::<property name="typeAliasesPackage" value="org.mybatis.domain"/>
+::<property name="mapperLocations" value="classpath:resources/mybatis/*.xml"/>
+
+
+
+아ㅣ..... 실행이 안되요 스플이...
+책 읽으면서 이론적인 부분이나 스프링 참고사항 정리하면서
+나중에 스프링 프로젝트 수정하는 방향으로 가야할듯 싶습니당
+
+RedirectView redirectView = new RedirectView("/shop/list");
+redirectView.setExposeModelAttributes(false);
+return new ModelAndView(redirectView);
+
+스프링에서의 transaction처리
+스프링 --> 코드기반트랜잭션 / 선언적트랜잭션 모두 지원.
+선언적트랜잭션
+1) <tx:advice>구성요소 지정 방식
+::필요한부분에 트랜잭션 일괄 지정.
+2) @Transactional어노테이션 지정 방식
+::트랜잭션과 관련된 세밀한 속성을 개별적으로 부여할 수 있음.
+::책 내용을 기준으로보면 Service인터페이스를 구현한 XXXServiceImpl클래스안에 각각의 메서드에
+@Transactional지정.
+@Transactional -->  스프링 설정 XML에 <tx:annotation-driven>지정.
+transaction-manager속성에 트랜잭션관리자 클래스 빈 아이디 지정.
+<tx:annotation-driven transaction-manager="transactionManager"/>
+
+트랜잭션관리자에는 여러 종류가 있음. 책/내가배운 스프링책에서는 DataSourceTransactionManager.
+이 역시 스프링이 관리하므로 빈 객체로 등록이 필요함.
+<bean id="transactionManager" class = "org.springframework.jdbc.datasource.DataSourceTransactionManger">
+<property name="dataSource" ref="dataSource" />
+</bean>
+
++ tx와 관련된 스키마는 
+xmlns:tx="http://www.springframework.org/schema/tx"
+--
+http://www.springframework.org/schema/tx
+http://www.springframework.org/schema/tx/spring-tx-4.3.xsd
+
+auto_increment --> 자동 생성 키를 조회해서 사용해야함.
+<selectKey keyColumn="컬럼명" keyProperty="어디프로퍼티에쓸건지" resultType="int" order="BEFORE">
+SELECT SEQ_SHOP_NO.NEXTVAL FROM DUAL
+//이거 아무래도 오라클/MySQL 다 다를듯.
+
+
+@PathVariable
+@RequestMapping(value="'view/{shopNo}", method=RequestMethod.GET)
+public ModelAndView view(@PathVariable String shopNo) thorow Exception{
+ModelAndView modelAndView = new ModelAndView("/shop/view");
+return modelAndView;
+}
+}
+
+
+jsp내용.
+-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+c태그 사용법 같ㅇ은거ㅓ좀.ㅁ.
+-동적바인딩이라해야되나.... ${shop.shopName}요거.
+
+<table><thead><tr><th><th></tr></thead><tbody><tr><td></td></tr></tbody>
+
+
+===================================
+
+SqlSessionDaoSupport객체를 사용한 방식.
+
+SqlSessionTemplate사용 --> 데이터 접근 클래스(DAO)마다 SqlSessionTemplate클래스 타입의 프로퍼티를 선언하고 @Resoure어노테이션을 지정해야함.
+기존에 SqlSessionTempalte의 경우에는 SqlSessionTemplate, SqlSessionFactoryBean 등의 빈을 설정하고 DAO클래스에서 @Resource어노테이션을 통해 해당 빈을 주입받아 사용하였음.
+
+mybatis-spring 라이브러리의 SqlSessionDaoSupport클래스 상속을 통해 SqlSessionDaoSupport 객체방식을 사용할 수 있음.
+이를통해 SqlSessionTemplate클래스 타입의 프로퍼티 사용 가능.
+
+SqlSessionDaoSupport클래스는 DaoSupport클래스를 상속받아서 구현함.
+가장 중요한것은 SqlSession인터페이스 타입의 프로퍼티.
+setSqlSessionTemplate()메소드와 setSqlSessionFactory()메소드를 통해 SqlSessionTemplate클래스 타입의 빈이 셋팅됨.
+DAO클래스에서는 getSqlSession()메소드를 통해 반환된 SqlSession인터페이스 타입 객체를 통해 매핑 구문을 실행할 수 있음.
+
+public abstract class SqlSessionDaoSupport extends DaoSupport{
+private SqlSession sqlSession;
+private boolean externalSqlSession;
+public void setSqlSessionFactory (SqlSessionFactory sqlSessionFactory){
+if(!this.externalSqlSession){
+this.sqlSession = new SqlSessionTemplate(sqlSessionFactory);
+}
+}
+public void setSqlSessionTemplate( SqlSessionTemplate sqlSessionTemplate){
+this.sqlSession = sqlSessionTemplate;
+this.externalSqlSession = true;
+}
+public SqlSession getSqlSession(){
+return this.sqlSession;
+}
+protected void checkDaoConfig(){
+notNull(this.sqlSession, "property 'sqlSessionFactory' or 'sqlSessionTemplate' are required");
+}//SqlSession인터페이스타입 프로퍼티가 null인경우 초기값을 검증하는 메소드.
+}
+
+
+사용
+DAO클래스가 SqlSessionDaoSupport추상클래스를 extends하도록 변경
+이후 SqlSessionTemplate클래스타입의 프로퍼티를 getSqlSession()으로 변경.
+
+
+=================================
+
+#자동매핑방식
+기존 SqlSessionTemplae/SqlSessionDaoSupport방식은 데이터 접근 인터페이스와 접근 클래스를 각각 쌍으로 작성해야하는 번거로움이 존재함.
+자동매핑방식은 인터페이스만 작성. --> 매퍼 인터페이스
+::매퍼 XML의 매핑 구문과 매핑될 수 있도록 정해진 규칙에 맞추어 작성한 인터페이스
+매퍼인터페이스는 객체가 아님.  직접사용X
+즉, 어디선가 매퍼 인터페이스 구현 객체를 생성/사용한다는 의미이며
+핵심 주체가 MapperFactoryBean클래스.
+::매퍼 인터페이스를 구현한 프록시 객체를 생성하는 프록시 팩토리 역할을 맡음.
+- 패키지 경로를 포함한 매퍼 인터페이스명과 동일한 네임스페이스를 지정한 매퍼 xml을 찾음
+- 호출한 매퍼 인터페이스의 메소드명과 일치하는 매핑 구문 아이디를 찾아 매핑 구문 실행.
+
+
+스프링 설정 xml파일에 MapperFactoryBean클래스를 baseMapper빈 아이디로 등록해야함.
+<bean id="baseMapper" class="org.mybatis.spring.mapper.MapperFactoryBean"/>
+등록시 SqlSessionFactoryBean클래스 타입의 빈을 프로퍼티로 전달.
+등록시 abstract속성과 lazy-init속성에 true.
+abstract속성 true--> 다른 빈의 부모로만 사용됨.
+lazy-init속성 true--> 객체가 사용되기 전까지 빈 생성을 지연.
+
+classMapper와 같은 실제 주입 매퍼 인터페이스의 타입으로 paren속성에 baseMapper지정.
+
+==> 모든 실제 주입 하는 매퍼 인터페이스 타입에 parent속성 지정이 필요하게됨.
+MapperScannerConfigurer.
+mybatis-spring라이브러리 제공.
+지정 패키지 겨애로에 존재하는 모든 매퍼 인터페이스를 매퍼 인터페이스 타입의 프록시 객체로 일괄 등록.
+<bean id="mapperScannerConfigurer" class="org.mybatis.spring.mapper.MapperScannerConfigurer"/>
+빈 등록시 매퍼 인터페이스가 위치한 최상위 패키지 경로 지정(basePackage라는 이름의 프로퍼티)
+SqlSessionFactory클래스 타입의 빈 아이디 역시 프로퍼티로 전달.(sqlSessionFactoryBeanName라는 이름의 프로퍼티)
+
++<mybatis:scan>, @MapperScan.
+
+
+
+
+
+
+
+
+
+
+

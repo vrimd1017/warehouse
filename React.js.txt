@@ -1,0 +1,593 @@
+https://velopert.com/3236
+__VirtualDOM의 필요성
+브라우저의 전체 동작을 보게되면 HTML을 전달받아 이를 파싱하여 DOMTree를 생성.
+이후, 외부 CSS파일과 인라인스타일을 파싱하여 이를 DOMTree와 Attachment하여 RenderTree를 생성.
+레이아웃 과정(각 노드의 좌표/위치 설정)과 Painting작업이 일어남.
+--> DOM에 변화가 생기면 위의 과정을 반복하게됨. 렌더트리를 다시 만들고, 레이아웃을 만들고, 페인팅하는 과정.
+이는 연산을 많이 해야된다는 뜻이며, 가상의 DOM에 변경사항을 적용시키고, 한번에 실제 DOM에 전달하여 처리하는 방식임.
++
+DOM조작의 실제적 문제는 각각의 조작이 위의 과정을 일으킨다는 것.
+30여개의 노드를 조작/수정하면 30여번의 잠재적 레이아웃 계산과 잠재적 렌더링, 페인팅을 거치게 됨.
+규모는 커지지만 단 한번만 하기때문에 연산의 횟수를 줄일 수 있음.
+이는 VirtualDOM을 사용하지 않고 DOM fragment를 사용해도 적용은 할 수 있음.
+VirtualDOM을 사용하는 추가적인 이유로는 자동화와 추상화.
+기존값이 어떻게 바뀌었는지 파악을 자동으로 해주며, DOM관리를 VirtualDOM이 하도록 하여 어떤 조작에 대한 정보공유가 필요없음.
+동기화 작업없이도 모든 작업을 묶어서 진행가능해짐.
+React.js는 유지보수 가능한 어플리케이션을 만드는것을 도와주며, '충분히'빠르다지 '항상'빠르지는 않음.
+
+React는 Angular.js와 같은 Framework가 아닌, Library임.
+React는 3가지 중요한 특징을 가지고있으며, 이 특징들은 분리되지 않고 서로 연결되어 React를 지탱.
+1)Component
+:: UI를 구성하는 개별적인 뷰 단위.
+:: 전체 앱은 각 Component들이 결합해서 만들어짐.
+:: 이때, 이 Component들은 앱의 다른 부분에서 쉽게 재사용이 가능함.
+2) JSX
+:: React를 위한 새로운 JavaScript문법.
+:: React는 작성한 코드를 컴파일하는 과정을 꼭 거쳐야 함. Babel과 같은 트랜스파일러를 써야하며, 초기세팅이 필수적임.
+:: 번거롭지만 사용하는 이유는, Declarative(선언적)한 개발을 도와주기 때문임.
+:: 형태가 html과 비슷하며, 이는 유저에게 보여주고싶은 최종적인 View와 비슷함.
+:: 개발자는 결과물에 직관적으로 도달할 수 있으며, 예측가능한 개발 뿐만아니라 유지보수와 협업등에서 강점을 발휘함.
+3) Virtual DOM
+:: React의 가장 큰 특징.
+:: DOM은 브라우저가 화면을 그리기 위한 정보가 담겨있음. 
+:: 브라우저별로 DOM을 가지고 화면을 만드는 방식도 달랐고, 이러한 문제로 DOM을 효과적으로 다루는게 꽤 힘들었음.
+:: Jquery는 누구나 DOM을 쉽게 조작할 수 있도록 하였지만, 프론트엔드의 전문성향상, 유지/보수의 중요성 부각을 통해 한계.
+:: render함수의 return결과는 바로 DOM에 반영되지 않음(브라우저에 렌더링되지않음)
+:: React는 render함수의 return값으로 VirtualDOM을 생성하며, 현재 브라우저의 DOM과 비교하여 바뀐부분만 적용.
+:: 이유. 브라우저에서 DOM을 해석하고 렌더링하는것은 비싼 작업이기 때문.
+
+프레임워크는 기본적으로 MVC를 다루지만 React는 View만을 다루고있음.
+JSX는 컴파일되어 JavaScript가 되고, 이것은 DOM에서 렌더링되기 전에 VirtualDOM에 반영됨.
+Angular와 같은 경우에는 계속적으로 DOM을 렌더링 하기때문에 앱의 규모가 커질수록 퍼포먼스가 감소하는 반면
+React는 ViurtualDOM을 통해 규모가 커져도 높은 퍼포먼스를 제공함.
+오직 JavaScript만을 통해 웹 브라우저상에 UI를 구축하고, 다른 플러그인과 배합하여 MVC를 구축할 수 있도록 함.
+
+브라우저 화면상에 보이는 하나하나의 버튼, 탭, 아이콘등이 모두 컴포넌트의 요소.
+React는 컴포넌트가 중요한 특성(구성)중 하나이며, 컴포넌트 별로 개발한다가 이때의 의미?인듯.
+
+CSS캡슐화.
+:: 컴포넌트 단위로 CSS가 중복되지 않도록 선택자들의 이름을 랜덤화.
+:: CSS가 컴포넌트 단위로 분리되어 사용되기 때문에 같은 이름을 여러 컴포넌트에서 사용하더라도 이름충돌이 발생하지 않음.
+
+...Typescript...
+
+Angular, react, vue와 같은 프레임워크/라이브러리들에서 모델은 어떻게 동작하냐,
+대부분은 양방향 바인딩으로, 모델에 있는 값이 변하면 뷰에서도 이를 변화시켜줌.
+--> 첫 화면을 보이고 변화에 따라 그 보여주는 부분이 바뀜.
+'변화'라는 것은 생각보다 복잡함.
+기존 	:: 이벤트발생. 모델변화. 해당 DOM에 특정 로직을 통해 업데이트. 
+react 	:: 새로 만들자. VirtualDOM을 사용. 변화는 VirtualDOM에 렌더링. 이후 정말 변화가 필요한곳만 업데이트.
+--> VirtualDOM은 DOM변화를 최소화 시켜주는 역할. 이는, 성능적으로 중요한 이슈.
+
+react --> Node.js, yarn, Webpack, Babel드의 도구가 필요.
+Webpack 	:: JSX문법으로 만들어진 여러 파일을 하나로 결합하기 위해서.
+Babel	:: JSX를 비롯한 새로운 자바스크립트 문법을 사용하기 위함.
+Node.js	:: 위의 도구들이 자바스크립트 런타임 Node.js기반으로 만들어짐.
+yarn	:: npm의 개선버전. 좀더 나은 속도와 좀 더 나은 캐싱 시스템. 및 라이브러리 버전관리.
+
+@Component
+react는 웹 어플리케이션에서 사용한 UI를 재사용가능한 컴포넌트로 분리하여 작성하여 이를통해 프로젝트의 유지보수성이 우수.
+컴포넌트에 해당하는 코드는 App.js에서 확인 가능.
+컴포넌트를 만드는 방법.
+1) 클래스를 사용.
+:: render함수가 있어야 함.
+:: 내부에서는 JSX를 retrun해 주어야 함.
+2) 함수를 사용.
+
+컴포넌트를 만들면 export를 통해 내보내기를 해줌.
+index.js에 해당 컴포넌트를 import시켜주고,  
+브라우저상에 리액트 컴포넌트를 보여주기 위해서는 ReactDOM.render함수를 사용해야 함.
+ReactDOM.render(렌더링 할 결과물, 컴포넌트를 어떤 DOM에 그릴 지)
+아직 어떤 과정인지는 모르겟는데, html파일에서 id를 지정하게되면 관련된 render함수 수행하는 듯.
+
+React에서는 HTML과 비슷한 문법으로 작성을 하면 이를 React.createElement를 사용하는 자바스크립트 형태로 변환시켜줌.
+이때, XML형태의 코드를 자바스크립트로 변환하기때문에 JSX를 위해서는 몇가지 규칙이 있음.
+1. 태그는 꼭 닫아야 함.
+2. 두개 이상의 엘리먼트는 하나의 엘리먼트로 감싸져 있어야한다.
+:: 보통은 <div>로 감싸는게 가장 쉽지만, 스타일과 같은 이유로 번거로워 질 때 <Fragment>를 사용 가능.(v16.2부터)
+:: <Fragment>태그를 바로 사용한다면 'Fragment' is not defined라는 에러가 발생함. import가 필요함.
+3. JSX내부에서는 if문을 사용할 수 없음. 사용하고자 한다면 삼항연산자 혹은 AND를 사용해야하며,
+   그래도 사용하고자 한다면 즉시 실행 함수를 사용해야 함.
+   내부에서 연산자 사용시 { } 중괄호를 열고 그 안에 작성. 
+
+JSX에서 Style지정은 render함수 내에서 const로 변수를 생성하여 지정함.
+이후 해당 스타일을 사용할 곳에서 style속성으로 해당 변수를 {변수}의 꼴로 지정.
+html에서는 텍스트 형태였던 반면, 리액트에서는 객체 형태로 이를 작성함.
+
+태그에 class를 설정할 때에는 html에서는 class속성을 사용했지만, react에서는 className을 사용함.
+App.css파일에 선언한 클래스를 사용 가능.
+이때, App.js에 이 css파일을 사용하고자 한다면 import가 필요함.
++ class는 css에서 선언시에 .을 붙여서 표현함. ex) .App, .User
+
+리액트 컴포넌트의 데이터.
+props	:: 부모 컴포넌트가 자식 컴포넌트에게 주는 값. 자식은 받기만 가능하며, 직접 수정은 불가능함.
+state	:: 컴포넌트 내부에서 선언하며 내부에서 값을 변경 가능.
+
++ 컴포넌트 클래스 내에서 {this.props.name} 과 같이 선언한 부분은 이를 호출하는 JSX내에서 택의 속성으로 해당 값을 주입.
+
+해당 컴포넌트에서 받아온 props값은 this.를 통해 조회가 가능함(태그사용시에 속성의 값으로 넣어줌)
+props의 값이 없을경우 오류가 생길 수 있음. 또는 일부러 비워야 될 경우도 있음. 빠뜨리거나.
+이를 위해 default값을 지정 가능함.
+render()함수 내가 아닌, 해당 컴포넌트의 변수로 static defaultProps를 선언하여 사용함.
+이때, static이 아니거나, defaultProps라는 이름이 아닐경우 의도대로 작동하지 않음.
+props의 기본값 설정.
+
+#함수형 컴포넌트.
+단순하게 props만 받아와서 보여주기만 하는 컴포넌트의 경우에 더 간편히 작성하는 방법.
+이전 컴포넌트 클래스를 상속받아 컴포넌트를 만들어 사용하는 방식은.
+해당 컴포넌트 클래스를 export해주어야 했으며, App.js에서 import했어야 함.
+이 방식을 사용하게 되면 그냥 App.js에서도(물론 똑같이 export하고 import도 가능)하여 간단하게 작성이 가능함.
+ES6의 화살표 문법? 이라는 람다 비슷한 방식을 통해 사용함.
+사실상 람다라고 봐야될듯. 
+()=>{}의 꼴이며, ()안에는 사용할 변수(props값)을 {props}의 형태로 넣어주며,
+{ } 에는 리턴할 html형식의 JSX를 ( ) 안에 작성해줌.
+
++ MyName에 클래스 형식으로 MyName1을, 함수형 컴포넌트로 MyName2를 작성하고 
+   export default MyName을 선언.
+   이후 App.js에서 import MyName1 from './MyName.js', import MyName2 from './MyName.js'와 같이 사용 가능.
+
+
+컴포넌트 클래스를 상속받아서 컴포넌트를 작성하는 방법과
+함수형 컴포넌트를 통해 컴포넌트를 생성하는 방법
+총 두가지 방법에 대해서 배워보았음.
+
+이들의 주요한 차이점.
+함수형 컴포넌트의 경우에는 state와 LifeCycle이 빠져있다는 것.
+이들이 빠져있기 때문에 초기에 컴포넌트를 올런다던가, 미세하게 빠르고 메모리를 덜 사용한다거나하는 차이점이 있지만, 이는 미세하기때문에 큰 차이는 없음.
+
+동적인 데이터 :: state를 사용해 이를 처리함.
+음.. 아직 나오지는 않았지만 함수형 컴포넌트에는 state가 없다고 했으니, 함수형 컴포넌트에서는 동적데이터를 사용하지 못한다는 의미인가? 이어서 보도록하자.
+
+state를 정의시에는 class fields문법을 사용함.
+그게 아니라면 constructor에 인자로 prop을 받아서 이를 사용해줘야하므로, 쓰는게 좋음.
+
++ 이전에 defaultProps의 경우와 마찬가지로 state를 class fields로 정의시에는 이름이 다르면 안됨.
+   해당 컴포넌트에 state라는 이름의 엔트리로 필드를 저장함.
+   ES6의 화살표함수를 통해서 함수를 선언.
+    handleIncrease=()=>{
+        this.setState({
+            number:this.state.number+1
+        });
+    }
+    handleDecrease=()=>{
+        this.setState({
+            number:this.state.number-1
+        });
+    }
+   위의 꼴을 보면 함수명(변수이름)은 자유. 
+   안은 setState는 프로퍼티의 setter/getter의미인지 아니면 고정된 함수의 이름인지는 잘 모르겟음.
+   아마, state가 고정되어있는걸로봐서 고정된 이름인듯.
+   음... 더욱이 위를보면 같은 setState함수인데 각각의 (화살표)함수 내에서 재정의 하는거로 봐서는 
+   외부에서 정의하여 사용하는거도 가능은 해보임.
+/// 해봐야하나?
+    render(){
+        return(
+            <div>
+                <h1>카운터</h1>
+                <div>값 : {this.state.number}</div>  
+                <button onClick={this.handleIncrease}>+</button>
+                <button onClick={this.handleDecrease}>-</button>
+            </div>
+        );
+    }
+   이 역시 동적 data를 다룬다는 것 뿐이지, 컴포넌트를 만드는것이기 때문에
+   <div>태그로 감싸는, JSX의 코드역시 필요.
+
+   classField를 사용하지 않을경우 Constructor에 저장하는 방법밖에 없음. 복잡.
+   Constructor를 이용할 경우에는 super(props)를 통해 기존 클래스의 생성자를 호출하고 그다음 작업을 해 주어야 함.
+
++ 두 방식을 함께 사용 할 경우 class fields가 먼저 실행되고, 그 다음에 constructor의 설정이 나온다고 함.
+
+	handleIncrease() {
+	    this.setState({
+	      number: this.state.number + 1
+	    });
+	  }
+	와 같은 방식으로 작성도 가능하다고 하며, 이 경우에는 클릭 이벤트시 this가 undefined가 되어
+	constructor에서 this.handleIncrease = this.handleIncrease.bind(this)로
+	바인딩 해 주어야 한다고 함. 
+	음..
+
+=> 기존 handleIncrease= ()=>{와 같이 사용하던 화살표 방식의 경우네는 this바인딩이 기존의 함수의 this바인딩과는 다른
+    방식으로 작동함. 기존의 this바인딩은 dynamic this로 자신을 호출한 객체에 바인딩됨.
+    반면에, 화살표함수의 경우에는 코드의 상위 스코프(lexical scope)를 가리키는 lexical this를 가짐.
+    그렇기 때문에 기존의 화살표 함수에서는 코드의 상위 스코프의 state. 를 가리키고, 바인딩됨.
+    반면에 두번째 방식의 경우에는 클릭이벤트로 전달되는 과정에서 끊어진다고 하는데 음... 머지
+    약간 복잡할듯. 클릭이벤트와 메시지큐잉, 콜스택간의 관계에 영향을 받을듯?
+    //현재 생활코딩에 글을 올려놓았음.
+   https://medium.com/@khwsc1/react%EC%97%90%EC%84%9C%EC%9D%98-%EB%B0%94%EC%9D%B8%EB%94%A9-binding-%EB%B0%A9%EB%B2%95%EB%93%A4-a595ff9190b6
+    JavaScript에서 this바인딩은 해당 메서드가 속한 Object를 가리키게 됨.
+    이 경우에는 this는 해당 객체를 가리키며, 객체의 프로퍼티값을 사용함.
+    그런데 해당 객체의 메서드를 새로운 변수에 저장한 후에 사용하는 방식에서는 이 메서드는 함수로 취급되며,
+    이경우에 this는 해당 Object와의 관계를 상실하게 됨. 즉, this바인딩이 풀리게됨.
+    이를 해결하기 위해서 this를 binding시켜주어야 함.
+    메서드의 bind메서드를 통해서, 파라미터로 넘긴 객체에 this를 바인딩시켜줌.
+    react에서는 메소드를 다른 메소드에서 사용할 때 바인딩 하면 됨.
+    ex) this.hanlder = this.handler.bind(this);
+   1) render안에서 JSX에서 onclick시에 직접 바인딩.
+   2) constructor안에서 바인딩
+   3) createClass사용.
+   4) 오토바인딩 데코레이터 사용.
+
+
+state값 변경.
+react는 state에 있는 값을 바꾸기 위해서는 this.setState를 무조건 거쳐야함.
+react는 이 함수가 호출되면 컴포넌트가 리렌더링 되도록 설계되어있음.
+setState는 객체로 전달되는 값만 업데이트를 해줌.
+
+setState는 객체 내부까지 확인해주지 않음.
+state값의 foo라는 변수에 foobar와 name이라는 변수를 가진 객체가 저장되어 있을 때, 
+setState({foo:{foobar=2}})와 같이 작성했을때, foobar만 변경되는게 아닌, 그냥 foo라는 객체 자체가 바뀌어버림.
+이 경우에는 '...'이라는 자바스크립트의 전개연산자를 사용함.
+--> foo:{ ...this.state.foo, foobar:2}와 같이 작성함. 
+이는 현재 기존 객체의 내용을 풀어준다는 의미를 가짐. 이후 immutatble.js / immer.js를 사용한다는데 아직은 잘 모름.
+
+기존의 state를 변화시키던 부분은 화살표함수를 통해서 this.state를 화살표함수의 파라미터로 받아올 수 있음.
+this.setState({number:this.state.number+1}); --> 
+this.setState((state)=>({number:state.number+1}); -->
+this.setState((number)=>({number:number+1}));		// 비구조화 할당.
+
+아래와같이도 가능.
+const {number} = this.state;
+this.setState({ number : number+1 })
+
+아 .. 난 비구조화할당에서 const {number} = this.state; 했을때
+왜 number가 this.state.number를 가리키는지 모르겠어여....
+그냥 난 state넘겨서 써야겠어여...ES6 화살표함수로 써야게써여..
+
+1. JSX에서 이벤트이름 설정시에는 camelCase를 따름. onclick --> onClick, onmousedown --> onMouseDown
+2. 이벤트 설정시에 전달해주는 값은 함수의 이름이여야 함. 함수를 handleIncrease()와 같이 넘길경우 렌더링시마다 해당 함수가 호출되어 버림.
+이벤트 설정시에 메소드를 호출하지 말것!
+
++ 직접 해보니
+handleIncrease=()=>{
+  this.setState(
+    ({number}=>{
+      number:number+1
+    })
+  );
+)
+이 방식은 정상적으로 작동 함. 위에서 잘 이해 못했던 비구조화할당이 제대로 된 경우인듯. 반대로,
+handleIncrease=()=>{
+        this.setState(
+            (state)=>({
+                number: state.number+1
+            })
+        );
+    }
+어....일단 이방식도 잘 작동함 잠시 오류였던 듯.
++ 기존코드는 handleIncrease=()=>{ this.setState({number : this.state.number+1 }); }
+
+
+#LifeCycle.
+컴포넌트가 브라우저에 나타날때, 사라질때, 업데이트될때 호출되는 API.
+1) Constructor(props)
+    컴포넌트 생성자 함수. 컴포넌트 생성시마다 해당 함수가 호출됨.
+2) ComponentWillMount 			현재 deprecated. // UNSAFE_componentWillMount()
+    컴포넌트가 화면에 나가기 직전에 호출됨.
+3) ComponentDidMount
+    컴포넌트가 화면에 나타나게 됬을 때 호출됨.
+    DOM을 사용해야 하는 외부 라이브러리 연동, DOM의 속성을 읽거나 직접 변경하는 작업
+    , 해당 컴포넌트에서 필요로 하는 데이터를 요청하기위해 ajax요청을 하는 등에 사용함.
+props의 변화, state의 변화에 따라서도 호출되는 api존재함. update전후.
+4) componentWillReceiveProps	(nextProps)	현재 deprecated. // UNSAFE_componentWillReceiveProps()
+    컴포넌트가 새로운 props를 받게됐을 때 호출됨.
+    주로 stste가 props에 따라 변해야 하는 로직을 작성함.
+    새로 받는 props는 nextProps로 조회가 가능함. 이때의 this.props는 업데이트 전의 props...?
+5) static getDerivedStateFromProps(nextProps, prevState)
+    props로 받아온 값을 state로 동기화 하는 작업을 해야할 때 사용됨.
+    setState가 아닌 특정 props가 바뀔 때 설정함. 형태는 설정하고자 하는 state값을 리턴하는 형태.
+    if(nextProps.value!==prevState.value){ return {value:nextProps.value}; } return null;
+    null리턴은 따로 업데이트 할 것이 없다는 것을 의미함.
+6) shouldComponentUpdate(nextProps, nextState)
+    컴포넌트 최적화시에 사용됨.
+    VirtualDOM은 변화가 발생한 부분만 감지하여 한번에 그려줌.
+    이때, 자신의 상태가 업데이트되지 않아도, 부모 컴포넌트가 리렌더링되면 자식 컴포넌트들도 리렌더링됨.
+    즉, render()함수가 호출됨.
+    VirtualDOM에 렌더링하는것은 큰 작업은 아니지만, 컴포넌트가 많아지게되면 CPU자원이 낭비되게됨. 쓸데없는곳에 쓰는 것.
+    이렇게, VirtualDOM에 리렌더링 하는것도 불필요할 경우 shouldComponentUpdate를 작성함.
+    기본적으로 true를 반환하며, 따로 작성하는 조건에 따라 false반환시에 해당 조건에서는 render함수를 호출하지 않음.
+7) componentWillUpdate			 현재 deprecated. //
+    shouldComponentUpdate에서 true를 반환했을때만 호출됨.
+    애니메이션 효과 초기화 혹은 이벤트 리스너 제거 작업을 수행함. 
+8) getSnapshotBeforeUpdate(prevProps, prevState)
+    render()가 호출된 후, 그리고 실제 DOM에 변화가 발생하여 화면에 나타나고 componentDidUpdate가 호출되기 전 실행됨.
+    render직후. DOM변화 이전.
+    이 API를 통해 DOM변화 직전의 DOM상태를 가져오고, 여기서의 리턴값을 componentDidUpdate의 3번째 파라미터로 사용.
+9) componentDidUpdate(prevProps, prevState, snapshot)
+    render()호출, getSnapshotBeforUpdate호출, DOM상태변화 이후에 발생됨.
+    이 시점에서는 this.props와 this.stte가 바뀌어있음.
+    파라미터를 통해 이전의 prevProps와 prevState를 조회할 수 있으며, snapshot값을 사용 가능함.
+
+getSnapshotBeforeUpdate(prevProps, prevState) {
+    // DOM 업데이트가 일어나기 직전의 시점입니다.
+    // 새 데이터가 상단에 추가되어도 스크롤바를 유지해보겠습니다.
+    // scrollHeight 는 전 후를 비교해서 스크롤 위치를 설정하기 위함이고,
+    // scrollTop 은, 이 기능이 크롬에 이미 구현이 되어있는데, 
+    // 이미 구현이 되어있다면 처리하지 않도록 하기 위함입니다.
+    if (prevState.array !== this.state.array) {
+      const {
+        scrollTop, scrollHeight
+      } = this.list;
+
+      // 여기서 반환 하는 값은 componentDidMount 에서 snapshot 값으로 받아올 수 있습니다.
+      return {
+        scrollTop, scrollHeight
+      };
+    }
+  }
+
+  componentDidUpdate(prevProps, prevState, snapshot) {
+    if (snapshot) {
+      const { scrollTop } = this.list;
+      if (scrollTop !== snapshot.scrollTop) return; // 기능이 이미 구현되어있다면 처리하지 않습니다.
+      const diff = this.list.scrollHeight - snapshot.scrollHeight;
+      this.list.scrollTop += diff;
+    }
+  }
+
+10) componentWillUnmount
+    주로 등록했던 이벤트를 제거하고, (setTimeout은 clearTimeout으로 제거), 외부라이브러리를 사용하여 
+    dispose기능이 있다면 이곳에서 호출함.
+
+
+#Error.
+render함수에서 에러발생시 리액트 앱이 크래쉬됨.
+관련된 API가 존재함.
+1) componentDidCatch(error, info)
+    error가 발생했을 때, setState를 통해 현재 컴포넌트의 상태를 변경시킬 수 있음.
+    --> 기존 state에 error:false지정 후 componentDidCatch(error,info)를 통해 setState({ error : true }); 지정하여 사용함.
+    관련된 에러의 처리는 render함수에서 처리해 주어야 함.
+    보통은 오류가 발생하는것은 사전에 방지해줘야 되므로, render()함수의 제일 윗부분에
+    현재 state의 error를 확인하여 true일시에 처리하는 방식으로 사용함.
+    
++ 여기서는 에러를 직접 발생시키기 위해서, 컴포넌트 클래스 외부에 함수형 컴포넌트를 생성하여 
+    throw (new Error('msg'));하였음.
+    //이때도 컴포넌트이기때문에 JSX를 가지고있어야함. return (<div></div>);
+    //기존 컴포넌트의 JSX내에서 {this.state.number === 4 &&& <Problematic/>}을 통해
+    //현재 state의 number값이 4라면 에러발생 컴포넌트를 호출하도록 지시함.
+    이후, 에러가 던져지면 componentDidCatch에서 에러를 확인하여 setState를 수행, state의 error값을 false로 변경함.
+    리렌더링 이후, render()함수 최상단에 분기시켜놨던 에러관련 JSX를 수행하도록 함.
+
++ 크러싱될 경우에는 개발화면에서는 Error가 발생되었다고 보여지지만, 사용자가 보는 화면에서는 그냥 흰 화면이 출력됨.
+   이를 방지하기 위해서 에러 처리를 해 주는 것.
+
+에러의 주된 발생 이유
+1) 존재하지 않는 함수를 호출하려고 할 때	//ex) props로 받은줄 알았던 함수가 전달되지 않았을때
+2) 배열/객체가 존재하지 않았을때	//ex) 역시 props로 받은줄 알았을때가 큼
+==> 위의 것들은
+  render( ) { if(!this.props.object || !this.props.array | this.props.array.length===0) return null;
+  혹은 static defaultProps를 활용.
+
+
+////////
+
+onChange		input의 텍스트 값이 바뀔때마다 발생하는 이벤트.
+e.target.value	이벤트 객체에 담겨있는 값을 읽어옴.
+e.preventDefault()	페이지 리로딩 방지. 원래 이벤트가 해야하는 작업을 방지한다는 것.
+		여기서는 Form의 onSubmit에 지정해놓은 메서드의 최상단에 위치함.
+		원래는 submit호출시 페이지이동(다시 불러오기)이 되며, 이 경우엔 가지고있는 상태를 다 잃게됨.
+		e.preventDefault()를 통해 이를 방지함.
+
+
+state안의 값을 부모 컴포넌트에게 전달해주는 것.
+--> 부모 컴포넌트에서 메소드를 만들고, 이 메소드를 자식에게 전달한 후에 자식 내부에서 호출하는 방식을 사용함.
+
+
++ input에서 value를 써주는 이유가 처음에는 이게 왜 필요하지? 값이 변경되면 onChange가 발생되고, 그러면 
+   input엘리먼트의 name속성에 맞춰서 onChange로 지정해놓은 메서드가 호출되고, 그대로 값이 바뀔텐데?
+   였지만, 생각해보니 onChange는 setState로 state의 상태를 변경해주는거고
+   react에서는 렌더링의 과정이 필요하며, 변경시마다 state의 상태를 엘리먼트에 보여주기 위해서느느
+   value속성에 this.state.value를 지정해줄 필요가 있었음.
++ 각 input별로 onChange에 대응하는 메서드를 지정해 줄 수도 있지만, 같은 동작을 한다면 다른 방법이 있음.
+   각각의 input에 name속성을 할당하여 이 값의 비교를 통해 각 input을 비교하여 동작시킴.
+   name속성으로 구분하기로 했으니 [e.target.name]으로 비교.		// Computed property names 라는 문법.
+   
+
+#react에서 배열.
+
+
+//JavaScript 객체에서의 비구조화 할당.
+  1	const state = { name: '111', age:'222' };
+  2	const {name, age}= state;
+  3	console.log(name);	//111
+  4 	console.log(age);	//222
+이와같은 방식으로 객체의 비구조화 할당을 함. 
+state라는 객체가 존재한다고 할 때, 2번째 줄과 같은 방식으로 사용을 한다면,
+해당범위에서 name을 사용할 경우 2번째 줄에 state로 할당해 놓았기 때문에 
+name이 state.name으로 사용됨.
+
+만약, const { information } = this.state; 가 존재한다면,
+information = this.state.information으로 사용하면 됨.
+
+react현재 따라하고있는 예제를 기준으로 보면
+1	handleCreate = (data) => {
+2	    const { information } = this.state;
+3	    this.setState({
+4	      information : information.concat({id:this.id++, ...data})
+5	    });
+6	  };
+이건
+1	handleCreate = (data) => {
+2	  //const { information } = this.state;
+3	  this.setState({
+4	    information : this.state.information.concat({id:this.id++, ...data})
+5	  });
+6	};
+이렇게도 쓸 수 있고
+1	handleCreate = (data) =>{
+2	    this.setState(
+3	      (state)=>({
+4	        information : state.information.concat({id:this.id++, ...data})
+5	      })
+6	    );
+7	  };
+이렇게도 쓸 수 있음.
+
+...
+다시 배열로 돌아와서.
+기존 JavaScript에서 배열을 다룰때, 값을 추가한다면 Array.push('value')를 사용하게됨.
+하지만 리액트에서는 state내부의 값을 직접적으로 수정하면 절대 안됨. 	--> 불변성 유지.
+push, splice, unshift, pop 과 같은 내장함수는 배열을 직접 수정하기때문에 concat, slice, map, filter와 같은 함수를 사용.
+이러한 함수들은 배열을 직접 수정하지 않으며, 기존의 배열을 기반으로 새로운 배열을 만들어내는 함수임.
++ 컴포넌트 내부에서 필요한 값 중에서, 렌더링과 상관이 없는 것들은 굳이 state에 넣어줄 필요가 없음.
+
+state배열에 컴포넌트를 위한 여러 데이터가있고,
+react에서 여러 컴포넌트를 렌더링 하기 위해서는 map을 사용하면 편함.
+1	const a = [1,2,3,4,5];
+2	const b = a.map(number => number*2);
+
++ 컴포넌트가 가지고있어야할 state를 만들 때에는 해당값이 없을때를 대비한, react가 크래쉬되는것을 방지할
+   defaultProps값을 지정해주는것이 좋음.
+
+react에서 배열을 렌더링할때에는 key속성이 꼭 필요함.
+key속성을 부여하지 않으면 배열의 인덱스값이 자동으로 key로 지정되며, 이 경우에는 비효율적이게됨.
+특정 인덱스에 새로운 값을 삽입하게 될 경우 그 뒤의 모든 요소는 인덱스 값이 변경되며, 모두 값이 바뀌게 되는 결과가 나옴.
+key를 배열 요소의 고정적인 고유 값을 부여해줄경우 좀 더 똑똑한 처리가 가능해짐.
+이때, velopert에서는 DOM을 한번만 생성한다고 표현하였으며,
+유추하자면, key가 인덱스 기반일 경우에는 인덱스가 바뀌는 모든 요소는 DOM이 바뀐다고 가정할 수 있게 됨.
+VirtualDOM을 사용하는 react의 특성상 최종적인 변경이 바뀌는 요소에 대해서 렌더링이 들어갈때,
+인덱스는 하위 인덱스 모두 DOM이 바뀌어 모두 렌더링한다면, 특정 요소를 고정적인 key값으로 사용할 때에는 하나만 바뀌는 거라고 생각됨.
+
+react에서는 배열의 요소를 직접적으로 수정할 수 없음.
+새로운 배열을 만들어 처리하는 concat, filter, slice등의 함수를 사용해야함.
+제거의 경우에는 
+1	const a  = [1,2,3,4,5];
+2 	const b = a.slice(0,2).concat(a.slice(3,5)); 또는	// array.slice(a,b) :: 배열 인덱스 a부터 b-1까지 가져옴.
+3	const c = a.filter(number => number!==3); 과같이 사용함.
+수정의 경우에도 불변성은 지켜져야 함.
+1	const modifiedArray = array.map(item => item.id === 1 ? ({ ...item, text: 'Korea'}) : item)과 같이 사용.
+예를들면
+1	handleUpdate = (id, data) => {
+2	    const { information } = this.state;
+3	    this.setState({
+4	      information: information.map(
+5	        info => id === info.id
+6	          ? { ...info, ...data } // 새 객체를 만들어서 기존의 값과 전달받은 data 을 덮어씀
+7	          : info // 기존의 값을 그대로 유지
+8	      )
+9	    })
+10	  }
+
++ 1	if(! prevState.prop && this.state.prop)
+   2	if( prevState.prop && !this.state.prop)
+   if문에서 &&연산의 경우에는 앞부분의 조건을 확인하고, 두번째의 조건도 확인을 함.
+   이때, if문은 true일때 진행되므로 1번과 2번이 진행되기 위해서는 두 조건 모두 참이여야 함.
+   1번의 경우 prevState가 false이고, this.state가 참이여야 함. 즉, 해당 상태가 거짓에서 참으로 가는 상태.
+   2번의 경우 prevState가 true이고, this.state가 거짓이여야 함. 즉, 해당 상태가 참에서 거짓으로 가는 상태를 의미함.
+
++ render()함수 내에 JSX를 작성할 때, if문으로 분기를 나누어 특정 state의 상태값에 따라 다른 return문을
+   작성시키는 방식을 통해 다른 결과를 보여줄 수 있음.
+   if(editing){ return (...JSX1...) } else { return (...JSX2...)} 
+
+
+데이터의 불변성.
+
+부모 컴포넌트의 상태가 업데이트되면, 해당 컴포넌트가 리렌더링이 발생함.
+이때, 컴포넌트의 리렌더링시에는 자식 컴포넌트까지 리렌더링됨.
+부모컴포넌트에서 target의 변화에 따라 onChange를 한다던가 하는 상황에서,
+변화가 일어나고 리렌더링 되기때문에 자식컴포넌트 모두 리렌더링되게됨.
+virtualDOM에만 리렌더링되지만, 리스트내의 아이템이 커지게되면 이 역시 부담이 되므로, 자원은 아끼는게 좋음.
+이런 낭비되는 자원을 위해 shouldcomponentUpdate를 구현함. true반환시 리렌더링. false반환시 리렌더링하지않음.
+조건에서는 어떨 때 리렌더링 시키지 않을지, 같은 데이터 배열일때 혹은 state의 값이 같을때 등을 비교하여 적용.
+같은 이유로, 컴포넌트에 대한 최적화를 해주는것이 좋음.
+부모 컴포넌트의 변화로 자식 컴포넌트에 리렌더링이 필요할 때, 그리고 실제적으로는 제일 마지막 컴포넌트만 렌더링 해주면 될 때에 shouldComponentUpdate를 적용시켜주면 됨.
+
+1. 재사용 가능한 컴포넌트를 만듭니다.
+2. props 는 부모에게서 전달받는 값입니다.
+3. state 는 자기 자신이 지니고 있는 데이터입니다.
+4. props 나 state 가 바뀌면 컴포넌트는 리렌더링 합니다.
+5. LifeCycle API 를 통해서 컴포넌트 마운트, 업데이트, 언마운트 전후로 처리 할 로직을 설정하거나 리렌더링을 막아줄수도 있습니다.
+
+
+1) 스타일링.
+  - .css파일 작성.
+  - Sass 사용.
+  - LESS, stylus, styled-components
+2) 상태관리.
+  - 위와는 다르게 커질수록 상태관리가 복잡해짐. 
+  - Redux / MobX
+3) 불변성유지
+  - Immutable.js
+  - Immer
+4) 라우팅
+  - react--router
+ - Next.js
+5) 테스팅
+  - Jest
+  - Enzyme
+6) 타입 시스템
+  - TypeScript
+  - Flow
+
+프로젝트를 진행하면서 필요한것을 공부하는게 가장 효과가 좋음.
+
++ var 은 scope가 함수단위
++ const 와 let은 블록단위.
++ ES6에서는 값을 바꿔야할땐 let, 바꾸지 않을땐 const. var는 잘 사용하지 않음.
+
+
+
+
+==================================================================
+
+export 
+일반적으로는 객체(여기서 객체는 함수를 포함함. 일급객체)를 대상으로 export가 됨.
+export {function1, function2};
+import {function1, function2} from 'functionfile';
+
+단일객체에 대해서는 export default를 적용함.
+var obj1= {
+	a : function(){...},
+	b: function(){...}
+}
+export default obj1;
+..
+import obj1 from 'functionfile';
+
+
+var
+:: 함수 내에서는 로컬 스코프를 가짐
+:: if절과 같은 다른 블록 내에서는 전역 스코프를 가짐.
+let
+:: 어떤 블록이든, 블록 스코프를 갖는 바인딩 구조를 가짐.
+:: var을 개선형.
+==> var을 사용 할 수 있는곳에는 일반적으로 let을 사용.
+const
+:: 단일 값 할당을 위해 사용됨. 주로 상수.
+:: 값에 대하여 읽기 전용 참조 변수를 생성.
+:: 포함된 값이 변경 불가가 되는것은 아님(?)
+:: 변수 식별자를 다시 할당할 수 없다는것을 의미함.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
